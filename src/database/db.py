@@ -19,10 +19,10 @@ class DbBuilder(metaclass=SingletonMeta):
         return self
 
     def create_database(self) -> "DbBuilder":
-        use_test_db=os.getenv("USE_TEST_DB")
-        if use_test_db:
+        use_test_db=os.getenv("IS_DB_TEST")
+        if use_test_db=="True":
             db_name = os.getenv("TEST_DB_NAME")
-        else:
+        elif use_test_db=="False":
             db_name = os.getenv("DB_NAME")
         if self.db_client is None:
             raise Exception("No DB connection established.")
