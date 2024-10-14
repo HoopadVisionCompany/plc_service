@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from threading import Thread
 from dotenv import load_dotenv
@@ -25,7 +26,18 @@ app_gate.add_middleware(ExceptionMiddleware)
 app_gate.include_router(plc_router, tags=["plc"])
 app_gate.include_router(pin_router, tags=["pin"])
 app_gate.include_router(task_router, tags=["task"])
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
 
+app_gate.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def run_server():
@@ -38,9 +50,9 @@ def run_all():
     thread_run_server = Thread(target=run_server, args=())
     thread_run_server.start()
     thread_run_server.join()
-    thread_subscriber = Thread(target=run_subscriber, args=())
-    thread_subscriber.start()
-    thread_subscriber.join()
+    # thread_subscriber = Thread(target=run_subscriber, args=())
+    # thread_subscriber.start()
+    # thread_subscriber.join()
 
 
 def runner():
