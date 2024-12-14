@@ -40,8 +40,8 @@ class PlcCollection(DbBuilder, CollectionInterface):
 
     def retrieve(self) -> List[Dict[str, Any]]:
         data = list(self.plc_collection.find())
-        if not data:
-            raise CustomException404(message="plc not found")
+        # if not data:
+        #     raise CustomException404(message="plc not found")
         print("list plc")
         return data
 

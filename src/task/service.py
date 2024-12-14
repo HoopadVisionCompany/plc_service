@@ -55,8 +55,8 @@ class TaskCollection(DbBuilder, CollectionInterface):
 
     def retrieve(self) -> List[Dict[str, Any]]:
         data = list(self.task_collection.find())
-        if not data:
-            raise CustomException404(message="task not found")
+        # if not data:
+        #     raise CustomException404(message="task not found")
         print("list task")
         return data
 

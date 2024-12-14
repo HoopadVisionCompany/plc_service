@@ -6,10 +6,13 @@ from dotenv import load_dotenv
 import os
 import sys
 
+
+
 print(0)
 from src.plc.router import router as plc_router
 from src.pin.router import router as pin_router
 from src.task.router import router as task_router
+from src.setting.router import router as setting_router
 from src.utils.middlewares.exception_middlewares import ExceptionMiddleware
 from src.subscriber.redis_subscriber import subscriber_handler
 print(00)
@@ -26,6 +29,7 @@ app_gate.add_middleware(ExceptionMiddleware)
 app_gate.include_router(plc_router, tags=["plc"])
 app_gate.include_router(pin_router, tags=["pin"])
 app_gate.include_router(task_router, tags=["task"])
+app_gate.include_router(setting_router, tags=["setting"])
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -41,7 +45,7 @@ app_gate.add_middleware(
 
 
 def run_server():
-    uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORT")))
+    uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORTS")))
 
 def run_subscriber():
     subscriber_handler()

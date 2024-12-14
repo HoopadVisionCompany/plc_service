@@ -1,12 +1,12 @@
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from src.plc.model import PLCSchema, PLCUpdateSchema
 from src.plc.service import PLCCollectionCreator
-
+from src.utils.auth.authorization import retrieve_user
 plc_factory = PLCCollectionCreator()
 plc_collection = plc_factory.create_collection()
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(retrieve_user)])
 
 
 @router.get("/plc/list")
