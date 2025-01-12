@@ -7,11 +7,14 @@ import os
 import sys
 
 print(0)
-from src.plc.router import router as plc_router
+from src.controller_backend.router import router as controller_router
 from src.pin.router import router as pin_router
 from src.task.router import router as task_router
+from src.scenario.router import router as scenario_router
 from src.utils.middlewares.exception_middlewares import ExceptionMiddleware
 from src.subscriber.redis_subscriber import subscriber_handler
+from src.scenario.initialize_scenario import initialize
+
 print(00)
 
 load_dotenv()
@@ -23,9 +26,10 @@ help_text = '''Chose one of the command:
 '''
 app_gate = FastAPI()
 app_gate.add_middleware(ExceptionMiddleware)
-app_gate.include_router(plc_router, tags=["plc"])
+app_gate.include_router(controller_router, tags=["controller"])
 app_gate.include_router(pin_router, tags=["pin"])
 app_gate.include_router(task_router, tags=["task"])
+app_gate.include_router(scenario_router, tags=["scenario"])
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -43,8 +47,14 @@ app_gate.add_middleware(
 def run_server():
     uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORT")))
 
+
 def run_subscriber():
     subscriber_handler()
+
+
+def run_initialize_scenarios():
+    initialize()
+
 
 def run_all():
     thread_run_server = Thread(target=run_server, args=())
@@ -59,6 +69,8 @@ def runner():
     if len(sys.argv) >= 2:
         if sys.argv[1] == '--all':
             run_all()
+        if sys.argv[1] == '--scenario':
+            run_initialize_scenarios()
         # elif sys.argv[1] == 'runserver':
         #     run_server()
         # elif sys.argv[1] == 'subscriber':
@@ -73,5 +85,4 @@ def runner():
 
 
 if __name__ == "__main__":
-
     runner()
