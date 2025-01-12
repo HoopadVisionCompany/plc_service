@@ -91,16 +91,37 @@ class Controller:
                         Controller Count Pin IN -> int/NoneType : Number of Input Pins
                         Controller Count Pin Out -> int/NoneType : Number of Output Pins
 
-                Example:
-                    controller_info = {
-                                'Delta PLC': [3, 'PLC Delta', 'Ethernet', '192.168.10.5', 502, None, 1, 8, 4],
-                                'bluepill': [20, 'ARM Micro-controller', 'Serial', None, None, "/dev/ttyUSB0", 2, 10, 10],
-                                'ماژول رله': [100, 'Relay Module', 'Ethernet', '192.168.10.16', 502, None, None, 0, 4]
-                                }
+                    Example:
+                        controller_info = {
+                                    'Delta PLC': [3, 'PLC Delta', 'Ethernet', '192.168.10.5', 502, None, 1, 8, 4],
+                                    'bluepill': [20, 'ARM Micro-controller', 'Serial', None, None, "/dev/ttyUSB0", 2, 10, 10],
+                                    'ماژول رله': [100, 'Relay Module', 'Ethernet', '192.168.10.16', 502, None, None, 0, 4]
+                                    }
             
+                controller_event Dictionary Format:
+                    controller_event = {'Controller Name': [Controller ID, Controller Type, Controller Protocol, Controller IP, Controller Port, Controller Driver, Controller Unit , Controller Count Pin IN, Controller Count Pin OUT],
+                                        'Pin List': [],
+                                        'Pin Type': [],
+                                        'Scenario': ''
+                    }
         """
         # Initialize logger
         self.logger = ControllerLogger()
 
         # Log the initialization
         self.logger.info("................Controller initialized................")
+    
+    def controller_info_extractor(self, controller_info: dict):
+        pass
+    
+    def controller_event_extractor(self, controller_event: dict):
+        pass
+
+    def controller_client_creator(self, controller_type: str, controller_protocol: str, controller_ip: str, controller_port: int, controller_driver: str, controller_unit: int):
+        pass
+
+    def controller_gpio(self, controller_type: str, controller_protocol: str, controller_pins: list):
+        pass
+
+    def controller_action(self, scenario: str, controller_client, controller_registers: list, controller_id: int, controller_type: str, controller_protocol: str):
+        pass
