@@ -3,8 +3,11 @@ import time
 from datetime import datetime
 from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient
+from utils.logger.logger_controller import logger
+# from configs.database import client
 
-from configs.database import client
+class Controller:
+    pass
 
 
 class PLC:
