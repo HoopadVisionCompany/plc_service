@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
-from src.pin.model import PinSchema
+from src.pin.model import PinSchema , PinUpdateSchema
 
 from src.pin.service import PinCollectionCreator
 
@@ -29,8 +29,8 @@ def insert_pin(pin_data: PinSchema):
 
 
 @router.patch("/pin/update/{id}")
-def update_pin(pin_data: PinSchema, id: str):
-    update_data = pin_data.model_dump()
+def update_pin(pin_data: PinUpdateSchema, id: str):
+    update_data = pin_data.model_dump(exclude_none=True)
     pin_collection.update(update_data, id)
     return JSONResponse(status_code=status.HTTP_200_OK, content="updated successfully")
 
