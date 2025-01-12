@@ -148,17 +148,20 @@ class Controller:
         # Log the initialization
         self.controller.logger.info("................Controller initialized................")
     
-    def controller_info_extractor(self, controller_info: dict):
-        devices = list(controller_info.values())
-        for _ in range(controller_info.__len__()):
-            pass
-        print(len(devices))
-    
-    def controller_event_extractor(self, controller_event: dict):
-        pass
 
-    def controller_client_creator(self, controller_type: str, controller_protocol: str, controller_ip: str, controller_port: int, controller_driver: str, controller_unit: int):
-        pass
+    def controller_client_creator(self, controller_info: dict):
+        self.client_list = {}
+        for device_name, device in controller_info.items():
+            if device['Controller Type'] == 'PLC Delta':
+                if device['Controller Protocol'] == 'Ethernet':
+                    client = ModbusClient(host=device['Controller IP'], port=device['Controller Port'], timeout=3, unit_id=device['Controller Unit'])
+                    self.client_list[device['Controller ID']] = client
+                elif device['Controller Protocol'] == 'Serial':
+                    client = ModbusSerialClient(method="rtu", port=device['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
+                    self.client_list[device['Controller ID']] = client
+            else:
+                print(f"Device {device_name} Client is Not Defined!")
+            # print(self.client_list)
 
     def controller_gpio(self, controller_type: str, controller_protocol: str, controller_pins: list):
         pass
@@ -170,8 +173,34 @@ class Controller:
 if __name__ == '__main__':
     controller = Controller()
     controller_info = {
-            'Delta PLC': [3, 'PLC Delta', 'Ethernet', '192.168.10.5', 502, None, 1, 8, 4],
-            'bluepill': [20, 'ARM Micro-controller', 'Serial', None, None, "/dev/ttyUSB0", 2, 10, 10],
-            'ماژول رله': [100, 'Relay Module', 'Ethernet', '192.168.10.16', 502, None, None, 0, 4]
-            }
-    controller.controller_info_extractor(controller_info)
+                'Delta PLC': {'Controller ID': 3,
+                                'Controller Type': 'PLC Delta',
+                                'Controller Protocol': 'Ethernet', 
+                                'Controller IP': '192.168.10.5', 
+                                'Controller Port': 502, 
+                                'Controller Driver': None, 
+                                'Controller Unit': 1, 
+                                'Controller Count Pin IN': 8, 
+                                'Controller Count Pin OUT': 4},
+
+                    'bluepill': {'Controller ID': 20,
+                                'Controller Type': 'ARM Micro-controller',
+                                'Controller Protocol': 'Serial', 
+                                'Controller IP': None, 
+                                'Controller Port': None, 
+                                'Controller Driver': "/dev/ttyUSB0", 
+                                'Controller Unit': 2, 
+                                'Controller Count Pin IN': 10, 
+                                'Controller Count Pin OUT': 10},
+
+                'ماژول رله': {'Controller ID': 100,
+                                'Controller Type': 'Relay Module',
+                                'Controller Protocol': 'Ethernet', 
+                                'Controller IP': '192.168.1.16', 
+                                'Controller Port': 8080, 
+                                'Controller Driver': None, 
+                                'Controller Unit': None, 
+                                'Controller Count Pin IN': 0, 
+                                'Controller Count Pin OUT': 4}                                              
+                } 
+    controller.controller_client_creator(controller_info)
