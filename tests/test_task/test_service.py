@@ -59,7 +59,7 @@ class TestTaskCollection(unittest.TestCase, Initialize):
         try:
             _ = self.obj_task.plc_exists("1")
         except Exception as e:
-            self.assertEqual(str(e), "plc not found")
+            self.assertEqual(str(e), "controller_backend not found")
 
         test_data2 = PLCDataBuilder().add_uuid().add_type("Delta").add_protocol("TCP").add_ip("0.0.0.0").add_port(
             5000).add_count_pin_out(10).add_count_pin_in(10).add_count_total_pin(20).data
@@ -139,7 +139,7 @@ class TestTaskCollectionInsert(unittest.TestCase, Initialize):
         try:
             self.obj_task.insert(self.task4)
         except Exception as e:
-            self.assertEqual(str(e), "plc not found")
+            self.assertEqual(str(e), "controller_backend not found")
             self.assertIsInstance(e, CustomException404)
 
     def test_insert_invalid_pin_ids(self):
@@ -215,7 +215,7 @@ class TestTaskCollectionUpdate(unittest.TestCase, Initialize):
         try:
             self.obj_task.update(self.task4, pk=self.task1_id)
         except Exception as e:
-            self.assertEqual(str(e), "plc not found")
+            self.assertEqual(str(e), "controller_backend not found")
             self.assertIsInstance(e, CustomException404)
 
     def test_update_invalid_pin_ids(self):

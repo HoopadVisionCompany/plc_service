@@ -10,7 +10,7 @@ sys.path.append("..")
 from src.pin.service import PinCollectionCreator, PinCollection
 from src.database.db import DbBuilder
 from src.utils.patterns.builders import PLCDataBuilder, PinDataBuilder
-from src.plc.service import PlcCollection, PLCCollectionCreator
+from src.controller_backend.service import PlcCollection, PLCCollectionCreator
 from src.utils.exceptions.custom_exceptions import CustomException404
 from pymongo.errors import DuplicateKeyError
 
@@ -60,7 +60,7 @@ class TestPinCollection(unittest.TestCase, Initialize):
         try:
             _ = self.obj_pin.plc_exists("1")
         except Exception as e:
-            self.assertEquals(str(e), "plc not found")
+            self.assertEquals(str(e), "controller_backend not found")
 
         test_data2 = PLCDataBuilder().add_uuid().add_type("Delta").add_protocol("TCP").add_ip("0.0.0.0").add_port(
             5000).add_count_pin_out(10).add_count_pin_in(10).add_count_total_pin(20).data
@@ -109,7 +109,7 @@ class TestPinCollectionInsert(unittest.TestCase, Initialize):
         try:
             self.obj_pin.insert(self.data4)
         except Exception as e:
-            self.assertEquals(str(e), "plc not found")
+            self.assertEquals(str(e), "controller_backend not found")
             self.assertIsInstance(e, CustomException404)
 
     def test_insert_duplicate_data(self):
@@ -162,7 +162,7 @@ class TestPinCollectionUpdate(unittest.TestCase, Initialize):
         try:
             self.obj_pin.update(self.data5, pk=self.data1_id)
         except Exception as e:
-            self.assertEquals(str(e), "plc not found")
+            self.assertEquals(str(e), "controller_backend not found")
             self.assertIsInstance(e, CustomException404)
 
     def test_update_duplicate_data(self):
