@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package parts;
+
+import "google/protobuf/empty.proto";
+// The greeting service definition.
+service Part {
+//	rpc parts (partRequest) returns (Dictionary);
+   rpc List(partRequest) returns (PartListReply) {}
+
+}
+
+message partRequest {
+  string client_key = 1;
+}
+
+message partReply {
+   int32 id = 1;
+   string name = 2;
+   int32 user_id = 3;
+}
+
+message PartListReply {
+    repeated partReply results = 1;
+}
