@@ -5,8 +5,6 @@ from src.database.collection_interface import CollectionInterface
 from src.database.collection_factory import CollectionFactoryInterface
 
 
-
-
 class SettingCollection(DbBuilder, CollectionInterface):
     def __init__(self) -> None:
         super().__init__()
@@ -27,9 +25,9 @@ class SettingCollection(DbBuilder, CollectionInterface):
 
     def update(self, update_data: Dict[str, Any], pk: str) -> None:
         data = self.detail(pk)
-        if "package_id" in data.keys():
-            if not package_is_exist(data['package_id']):
-                raise CustomException404("this package is not exist")
+        # if "package_id" in data.keys():
+        #     if not package_is_exist(data['package_id']):
+        #         raise CustomException404("this package is not exist")
         self.setting_collection.update_one({"_id": pk}, {"$set": update_data})
         print("updated setting")
 

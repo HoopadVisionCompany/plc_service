@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import ValidationError
 from fastapi.responses import JSONResponse
 from fastapi import status
-from src.utils.exceptions.custom_exceptions import CustomException404 , CustomException401, CustomException400
+from src.utils.exceptions.custom_exceptions import CustomException404, CustomException401, CustomException400
 from typing import Union
 
 
@@ -43,25 +43,30 @@ class CustomException404Exception(ExceptionHandlerInterface):
             return response
         return None
 
-class CustomException400Exception(ExceptionHandlerInterface):
-    def handle_exception(self, exception: Exception) -> Union[JSONResponse, None]:
-        if isinstance(exception, CustomException400):
-            response = JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": [{"msg": str(exception), "loc": ["Unknown"], "type": "Bad Request"}]},
 
-            )
-            return response
-        return None
 class CustomException401Exception(ExceptionHandlerInterface):
     def handle_exception(self, exception: Exception) -> Union[JSONResponse, None]:
         if isinstance(exception, CustomException401):
             response = JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": [{"msg": str(exception), "loc": ["Unknown"], "type": "you dont have access"}]},
+                content={
+                    "detail": [{"msg": str(exception), "loc": ["Unknown"], "type": "Unauthorized Custom Exception"}]},
             )
             return response
         return None
+
+
+class CustomException400Exception(ExceptionHandlerInterface):
+    def handle_exception(self, exception: Exception) -> Union[JSONResponse, None]:
+        if isinstance(exception, CustomException400):
+            response = JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "detail": [{"msg": str(exception), "loc": ["Unknown"], "type": "Bad Request Custom Exception"}]},
+            )
+            return response
+        return None
+
 
 class CustomException500Exception(ExceptionHandlerInterface):
     def handle_exception(self, exception: Exception) -> JSONResponse:
