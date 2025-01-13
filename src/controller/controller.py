@@ -1,0 +1,206 @@
+
+# import sys
+# import os
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
+import time
+from datetime import datetime
+from pyModbusTCP.client import ModbusClient
+from pymodbus.client import ModbusSerialClient
+from logger_controller import ControllerLogger
+
+
+class Controller:
+    def __init__(self):
+        """
+        Controller Docs (Autor: Mohammadreza Asadi G.)
+
+            Delta PLCs Controller (Ubuntu Installation Guide):
+
+                Serial PLCs:
+                    - Python Packages Installation:
+                        $ pip install pymodbus
+                        $ pip install pyserial
+
+                    - RS485 Driver Download (Extract): https://roboeq.ir/files/id/3923/name/Windows-CH340-Driver.zip
+                    - If wine is not installed:
+                        $ sudo apt install wine
+
+                    - RS485 Driver Installation (in the extracted dir):
+                        $ wine SETUP.exe
+
+                    - Install driver using default option in the GUI
+
+                    - Driver Checking (/dev/ttyUSB0):
+                        $ ls /dev/tty*
+
+                    - Permissions Access:
+                        $ sudo chmod a+rw /dev/ttyUSB0
+
+                    - Permanent Permissions Access:
+                        $ lsusb
+                            - Find the USB device info. for example:
+                                Bus 001 Device 005: ID 1a86:7523 QinHeng Electronics HL-340 USB-Serial adapter
+                            - The idVendor is "1a86" and idProduct is 7523
+
+                        $ sudo nano /etc/udev/rules.d/50-ttyusb.rules
+                        - Add this line in the file and save (Note: use the idVendor and idProduct of the previous step):
+                            SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", GROUP="dialout", MODE="0666"
+
+                Ethernet PLCs:
+                    - Python Packages Installation:
+                        $ pip install pyModbusTCP
+
+                - Run the Test Code:
+                    $ python3 PLC.py
+
+                - Modbus PLC Registers Address:
+
+                        MEMORY BIT
+                    PLC Address	Modbus Address
+                        M0	002049 (for Ethernet PLCs it starts at 002048)
+                        M1	002050
+                        M2	002051
+                        M3	002052
+                        M4	002053
+                        M5	002054
+                        M6	002055
+                        M7	002056
+                        M8	002057
+                        M9	002058
+                        |	|
+                        |	|
+                        |	|
+                        |	|
+                        M1535	003584
+
+                        
+            Input Data Format (for the initialization of all kind of controllers):
+
+                controller_info Dictionary Format:
+                    controller_info = {
+                                'Controller Name': {'Controller ID': '',
+                                                    'Controller Type':'',
+                                                    'Controller Protocol':'', 
+                                                    'Controller IP':'', 
+                                                    'Controller Port':'', 
+                                                    'Controller Driver':'', 
+                                                    'Controller Unit':'', 
+                                                    'Controller Count Pin IN':'', 
+                                                    'Controller Count Pin OUT':''}                                              
+                                }
+
+                    Validation:
+                        Controller Name -> str : Arbitrary Name
+                        Controller ID -> int : Arbitrary Number (1, 2, ...)
+                        Controller Type -> str : Fixed Names (PLC Delta, PLC Siemens, ARM Micro-controller, Relay Module)
+                        Controller Protocol -> str : Fixed Names (Ethernet, Serial)
+                        Controller IP -> str/NoneType : IP Address
+                        Controller Port -> int/NoneType : Port Address
+                        Controller Driver -> str/NoneType : Based on Serial Port Name ("/dev/ttyUSBx" on Ubuntu , 'COMx' on Windows)
+                        Controller Unit -> int/NoneType : Based on Clients Number (Clients IDs)
+                        Controller Count Pin IN -> int/NoneType : Number of Input Pins
+                        Controller Count Pin Out -> int/NoneType : Number of Output Pins
+
+                    Example:
+                    controller_info = {
+                                'Delta PLC': {'Controller ID': 3,
+                                              'Controller Type': 'PLC Delta',
+                                              'Controller Protocol': 'Ethernet', 
+                                              'Controller IP': '192.168.10.5', 
+                                              'Controller Port': 502, 
+                                              'Controller Driver': None, 
+                                              'Controller Unit': 1, 
+                                              'Controller Count Pin IN': 8, 
+                                              'Controller Count Pin OUT': 4},
+
+                                 'bluepill': {'Controller ID': 20,
+                                              'Controller Type': 'ARM Micro-controller',
+                                              'Controller Protocol': 'Serial', 
+                                              'Controller IP': None, 
+                                              'Controller Port': None, 
+                                              'Controller Driver': "/dev/ttyUSB0", 
+                                              'Controller Unit': 2, 
+                                              'Controller Count Pin IN': 10, 
+                                              'Controller Count Pin OUT': 10},
+
+                                'ماژول رله': {'Controller ID': 100,
+                                              'Controller Type': 'Relay Module',
+                                              'Controller Protocol': 'Ethernet', 
+                                              'Controller IP': '192.168.1.16', 
+                                              'Controller Port': 8080, 
+                                              'Controller Driver': None, 
+                                              'Controller Unit': None, 
+                                              'Controller Count Pin IN': 0, 
+                                              'Controller Count Pin OUT': 4}                                              
+                                }                   
+
+                controller_event Dictionary Format:
+                    controller_event = {'Controller Name': [Controller ID, Controller Type, Controller Protocol, Controller IP, Controller Port, Controller Driver, Controller Unit , Controller Count Pin IN, Controller Count Pin OUT],
+                                        'Pin List': [],
+                                        'Pin Type': [],
+                                        'Scenario': ''
+                    }
+        """
+        # Initialize logger
+        self.controller = ControllerLogger()
+
+        # Log the initialization
+        self.controller.logger.info("................Controller initialized................")
+    
+
+    def controller_client_creator(self, controller_info: dict):
+        self.client_list = {}
+        for device_name, device in controller_info.items():
+            if device['Controller Type'] == 'PLC Delta':
+                if device['Controller Protocol'] == 'Ethernet':
+                    client = ModbusClient(host=device['Controller IP'], port=device['Controller Port'], timeout=3, unit_id=device['Controller Unit'])
+                    self.client_list[device['Controller ID']] = client
+                elif device['Controller Protocol'] == 'Serial':
+                    client = ModbusSerialClient(method="rtu", port=device['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
+                    self.client_list[device['Controller ID']] = client
+            else:
+                print(f"Device {device_name} Client is Not Defined!")
+            # print(self.client_list)
+
+    def controller_gpio(self, controller_type: str, controller_protocol: str, controller_pins: list):
+        pass
+
+    def controller_action(self, scenario: str, controller_client, controller_registers: list, controller_id: int, controller_type: str, controller_protocol: str):
+        pass
+
+
+if __name__ == '__main__':
+    controller = Controller()
+    controller_info = {
+                'Delta PLC': {'Controller ID': 3,
+                                'Controller Type': 'PLC Delta',
+                                'Controller Protocol': 'Ethernet', 
+                                'Controller IP': '192.168.10.5', 
+                                'Controller Port': 502, 
+                                'Controller Driver': None, 
+                                'Controller Unit': 1, 
+                                'Controller Count Pin IN': 8, 
+                                'Controller Count Pin OUT': 4},
+
+                    'bluepill': {'Controller ID': 20,
+                                'Controller Type': 'ARM Micro-controller',
+                                'Controller Protocol': 'Serial', 
+                                'Controller IP': None, 
+                                'Controller Port': None, 
+                                'Controller Driver': "/dev/ttyUSB0", 
+                                'Controller Unit': 2, 
+                                'Controller Count Pin IN': 10, 
+                                'Controller Count Pin OUT': 10},
+
+                'ماژول رله': {'Controller ID': 100,
+                                'Controller Type': 'Relay Module',
+                                'Controller Protocol': 'Ethernet', 
+                                'Controller IP': '192.168.1.16', 
+                                'Controller Port': 8080, 
+                                'Controller Driver': None, 
+                                'Controller Unit': None, 
+                                'Controller Count Pin IN': 0, 
+                                'Controller Count Pin OUT': 4}                                              
+                } 
+    controller.controller_client_creator(controller_info)

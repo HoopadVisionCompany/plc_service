@@ -3,11 +3,11 @@ from src.utils.exceptions.custom_exceptions import CustomException404
 from src.database.collection_interface import CollectionInterface
 
 from src.database.collection_factory import CollectionFactoryInterface
-from src.plc.service import PLCCollectionCreator
+from src.controller_backend.service import ControllerCollectionCreator
 from typing import Dict, Any, List
 
-plc_factory = PLCCollectionCreator()
-plc_collection = plc_factory.create_collection()
+controller_factory = ControllerCollectionCreator()
+controller_collection = controller_factory.create_collection()
 
 
 class PinCollection(DbBuilder, CollectionInterface):
@@ -17,22 +17,22 @@ class PinCollection(DbBuilder, CollectionInterface):
     def create_collection(self) -> None:
         print("Creating PinCollection...")
         self.pin_collection = self.db['pin_collection']
-        self.pin_collection.create_index([("plc_id", 1), ("id", 1)], unique=True)
+        self.pin_collection.create_index([("controller_id", 1), ("number", 1), ('type', 1)], unique=True)
 
-        print("PinCollection created with unique index on 'plc_id' and 'id'")
+        print("PinCollection created with unique index on 'controller_id' and 'number'")
 
     def get_collection(self) -> Any:
         return self.pin_collection
 
     def insert(self, data: Dict[str, Any]) -> None:
-        _ = self.plc_exists(data["plc_id"])
+        _ = self.controller_exists(data["controller_id"])
         data = self.id_creator(data)
         self.pin_collection.insert_one(data)
         print("inserted pin")
 
     def update(self, update_data: Dict[str, Any], pk: str) -> None:
         _ = self.detail(pk)
-        _ = self.plc_exists(update_data["plc_id"])
+        _ = self.controller_exists(update_data["controller_id"])
         self.pin_collection.update_one({"_id": pk}, {"$set": update_data})
         print("updated pin")
 
@@ -58,9 +58,9 @@ class PinCollection(DbBuilder, CollectionInterface):
         print("detail pin")
         return data
 
-    def plc_exists(self, plc_id: str) -> Dict[str, Any]:
-        # data = list(plc_collection.get_collection().find({"_id": plc_id}))
-        data = list(plc_collection.detail(plc_id))
+    def controller_exists(self, controller_id: str) -> Dict[str, Any]:
+        # data = list(controller_collection.get_collection().find({"_id": controller_id}))
+        data = list(controller_collection.detail(controller_id))
         return data
 
 

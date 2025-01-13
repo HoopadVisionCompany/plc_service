@@ -48,7 +48,7 @@ class TestCustomException404Exception(unittest.TestCase):
     def test_exception_handler_custom_exception404(self):
         handler = CustomException404Exception()
         try:
-            client.get("/plc/detail/1")
+            client.get("/controller_backend/detail/1")
         except CustomException404 as ce404:
             response = handler.handle_exception(ce404)
             self.assertIsInstance(response, JSONResponse)
@@ -66,19 +66,19 @@ class TestCustomException500Exception(unittest.TestCase):
                      "count_total_pin": 20
                      }
 
-        client.post("/plc/insert", json=self.data)
+        client.post("/controller_backend/insert", json=self.data)
 
     def tearDown(self):
 
-        plcs = client.get("/plc/list").json()
+        plcs = client.get("/controller_backend/list").json()
         for plc in plcs:
-            client.delete(f"/plc/delete/{plc['_id']}")
+            client.delete(f"/controller_backend/delete/{plc['_id']}")
 
     def test_exception_handler_custom_exception500(self):
         handler = CustomException404Exception()
         try:
 
-            client.post("/plc/insert", json=self.data)
+            client.post("/controller_backend/insert", json=self.data)
         except Exception as ce500:
             response = handler.handle_exception(ce500)
             self.assertIsInstance(response, JSONResponse)

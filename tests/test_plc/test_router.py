@@ -8,7 +8,7 @@ sys.path.append('..')
 
 from main import app_gate
 
-from src.plc.service import PLCCollectionCreator
+from src.controller_backend.service import PLCCollectionCreator
 from src.database.db import DbBuilder
 from src.utils.patterns.builders import PLCDataBuilder
 
@@ -39,11 +39,11 @@ class TestListPLC(unittest.TestCase, Initialize):
         self.obj.insert(self.data1)
         self.obj.insert(self.data2)
 
-        response = client.get('/plc/list')
+        response = client.get('/controller_backend/list')
         self.assertEqual(response.status_code, 200)
 
     def test_list_plc_empty(self):
-        response = client.get('/plc/list')
+        response = client.get('/controller_backend/list')
         self.assertEqual(response.status_code, 404)
 
 
@@ -60,11 +60,11 @@ class TestDetailPLC(unittest.TestCase, Initialize):
         self.db_client.drop_database(os.getenv("TEST_DB_NAME"))
 
     def test_detail_plc_valid(self):
-        response = client.get(f'/plc/detail/{self.id1}')
+        response = client.get(f'/controller_backend/detail/{self.id1}')
         self.assertEqual(response.status_code, 200)
 
     def test_detail_plc_invalid_id(self):
-        response = client.get('/plc/detail/1')
+        response = client.get('/controller_backend/detail/1')
         self.assertEqual(response.status_code, 404)
 
 
@@ -92,24 +92,24 @@ class TestInsertPLC(unittest.TestCase, Initialize):
         self.db_client.drop_database(os.getenv("TEST_DB_NAME"))
 
     def test_insert_plc_valid_data(self):
-        response = client.post('/plc/insert', json=self.data1)
+        response = client.post('/controller_backend/insert', json=self.data1)
         self.assertEqual(response.status_code, 200)
 
     def test_insert_plc_invalid_data_add_count_pin_in(self):
-        response = client.post('/plc/insert', json=self.data2)
+        response = client.post('/controller_backend/insert', json=self.data2)
         self.assertEqual(response.status_code, 422)
 
     def test_insert_plc_invalid_data_add_count_pin_out(self):
-        response = client.post('/plc/insert', json=self.data3)
+        response = client.post('/controller_backend/insert', json=self.data3)
         self.assertEqual(response.status_code, 422)
 
     def test_insert_plc_invalid_data_ip(self):
-        response = client.post('/plc/insert', json=self.data4)
+        response = client.post('/controller_backend/insert', json=self.data4)
         self.assertEqual(response.status_code, 422)
 
     def test_insert_plc_duplicate(self):
         self.obj.insert(self.data1)
-        response = client.post('/plc/insert', json=self.data5_1)
+        response = client.post('/controller_backend/insert', json=self.data5_1)
         self.assertEqual(response.status_code, 500)
 
 
@@ -143,23 +143,23 @@ class TestUpdatePLC(unittest.TestCase, Initialize):
 
     def test_update_plc_valid_data(self):
         self.collection.insert_one(self.data1)
-        response = client.patch(f'/plc/update/{self.data1_id}', json=self.data2)
+        response = client.patch(f'/controller_backend/update/{self.data1_id}', json=self.data2)
         self.assertEqual(response.status_code, 200)
 
     def test_update_plc_invalid_data_add_count_pin_in(self):
         self.collection.insert_one(self.data1)
-        response = client.patch(f'/plc/update/{self.data1_id}', json=self.data3)
+        response = client.patch(f'/controller_backend/update/{self.data1_id}', json=self.data3)
         self.assertEqual(response.status_code, 422)
 
     def test_update_plc_invalid_data_add_count_pin_out(self):
         self.collection.insert_one(self.data1)
-        response = client.patch(f'/plc/update/{self.data1_id}', json=self.data4)
+        response = client.patch(f'/controller_backend/update/{self.data1_id}', json=self.data4)
         self.assertEqual(response.status_code, 422)
 
     def test_update_plc_duplicate(self):
         self.collection.insert_one(self.data1)
         self.collection.insert_one(self.data5)
-        response = client.patch(f'/plc/update/{self.data5_id}', json=self.data5_1)
+        response = client.patch(f'/controller_backend/update/{self.data5_id}', json=self.data5_1)
         self.assertEqual(response.status_code, 500)
 
 
@@ -177,10 +177,10 @@ class TestDeletePLC(unittest.TestCase, Initialize):
 
     def test_delete_plc_valid_data(self):
         self.collection.insert_one(self.data1)
-        response = client.delete(f'/plc/delete/{self.data1_id}')
+        response = client.delete(f'/controller_backend/delete/{self.data1_id}')
         self.assertEqual(response.status_code, 204)
 
     def test_delete_plc_notfound_data(self):
         self.collection.insert_one(self.data1)
-        response = client.delete('/plc/delete/1')
+        response = client.delete('/controller_backend/delete/1')
         self.assertEqual(response.status_code, 404)

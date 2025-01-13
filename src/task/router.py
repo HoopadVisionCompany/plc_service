@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status,Depends
 from fastapi.responses import JSONResponse
-from src.task.model import TaskSchema
+from src.task.model import TaskSchema,TaskUpdateSchema
 
 from src.task.service import TaskCollectionCreator
 from src.utils.auth.authorization import retrieve_user
@@ -30,8 +30,8 @@ def insert_task(task_data: TaskSchema):
 
 
 @router.patch("/task/update/{id}")
-def update_task(task_data: TaskSchema, id: str):
-    update_data = task_data.model_dump()
+def update_task(task_data: TaskUpdateSchema, id: str):
+    update_data = task_data.model_dump(exclude_none=True)
     task_collection.update(update_data, id)
     return JSONResponse(status_code=status.HTTP_200_OK, content="updated successfully")
 

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Union
 
 
 class PinType(str, Enum):
@@ -9,5 +10,11 @@ class PinType(str, Enum):
 
 class PinSchema(BaseModel):
     type: PinType = Field(default=PinType.pin_in)
-    plc_id: str
-    id: int = Field(ge=0, le=100)
+    controller_id: str
+    number: int = Field(ge=0, le=100)
+
+
+class PinUpdateSchema(BaseModel):
+    type: Union[PinType, None] = Field(default=PinType.pin_in)
+    controller_id: Union[str, None] = None
+    number: Union[int, None] = Field(ge=0, le=100)
