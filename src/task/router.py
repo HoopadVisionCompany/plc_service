@@ -1,13 +1,13 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status,Depends
 from fastapi.responses import JSONResponse
 from src.task.model import TaskSchema,TaskUpdateSchema
 
 from src.task.service import TaskCollectionCreator
-
+from src.utils.auth.authorization import retrieve_user
 task_factory = TaskCollectionCreator()
 task_collection = task_factory.create_collection()
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(retrieve_user)])
 
 
 @router.get("/task/list")

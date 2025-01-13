@@ -1,12 +1,12 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status,Depends
 from fastapi.responses import JSONResponse
 from src.pin.model import PinSchema , PinUpdateSchema
 
 from src.pin.service import PinCollectionCreator
-
+from src.utils.auth.authorization import retrieve_user
 pin_factory = PinCollectionCreator()
 pin_collection = pin_factory.create_collection()
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(retrieve_user)])
 
 
 @router.get("/pin/list")
