@@ -59,11 +59,11 @@ def run_initialize_scenarios():
 
 def run_all():
     thread_run_server = Thread(target=run_server, args=())
-    thread_subscriber = Thread(target=run_subscriber, args=())
+    # thread_subscriber = Thread(target=run_subscriber, args=())
     thread_run_server.start()
-    thread_subscriber.start()
+    # thread_subscriber.start()
     thread_run_server.join()
-    thread_subscriber.join()
+    # thread_subscriber.join()
 
 
 def runner():
