@@ -1,17 +1,17 @@
 
-# import sys
-# import os
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import time
 from datetime import datetime
 from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient
 from logger_controller import ControllerLogger
+from utils.patterns.singletons import SingletonMeta
 
-
-class Controller:
-    def __init__(self):
+class Controller(metaclass=SingletonMeta):
+    def __init__(self, controller_info):
         """
         Controller Docs (Autor: Mohammadreza Asadi G.)
 
@@ -92,7 +92,7 @@ class Controller:
 
                     Validation:
                         Controller Name -> str : Arbitrary Name
-                        Controller ID -> int : Arbitrary Number (1, 2, ...)
+                        Controller ID -> str : UUID4 (Mongodb)
                         Controller Type -> str : Fixed Names (PLC Delta, PLC Siemens, ARM Micro-controller, Relay Module)
                         Controller Protocol -> str : Fixed Names (Ethernet, Serial)
                         Controller IP -> str/NoneType : IP Address
@@ -104,7 +104,7 @@ class Controller:
 
                     Example:
                     controller_info = {
-                                'Delta PLC': {'Controller ID': 3,
+                                'Delta PLC': {'Controller ID': 'ghg256gjd88f',
                                               'Controller Type': 'PLC Delta',
                                               'Controller Protocol': 'Ethernet', 
                                               'Controller IP': '192.168.10.5', 
@@ -114,7 +114,7 @@ class Controller:
                                               'Controller Count Pin IN': 8, 
                                               'Controller Count Pin OUT': 4},
 
-                                 'bluepill': {'Controller ID': 20,
+                                 'bluepill': {'Controller ID': 'gtht6577gjd88f',
                                               'Controller Type': 'ARM Micro-controller',
                                               'Controller Protocol': 'Serial', 
                                               'Controller IP': None, 
@@ -124,7 +124,7 @@ class Controller:
                                               'Controller Count Pin IN': 10, 
                                               'Controller Count Pin OUT': 10},
 
-                                'ماژول رله': {'Controller ID': 100,
+                                'ماژول رله': {'Controller ID': 'pjho090909jkkd',
                                               'Controller Type': 'Relay Module',
                                               'Controller Protocol': 'Ethernet', 
                                               'Controller IP': '192.168.1.16', 
@@ -136,7 +136,7 @@ class Controller:
                                 }                   
 
                 controller_event Dictionary Format:
-                    controller_event = {'Controller Name': [Controller ID, Controller Type, Controller Protocol, Controller IP, Controller Port, Controller Driver, Controller Unit , Controller Count Pin IN, Controller Count Pin OUT],
+                    controller_event = {'Controller ID':'',
                                         'Pin List': [],
                                         'Pin Type': [],
                                         'Scenario': ''
@@ -147,7 +147,9 @@ class Controller:
 
         # Log the initialization
         self.controller.logger.info("................Controller initialized................")
-    
+        
+        self.controller_info = controller_info
+        self.controller_client_creator(controller_info)
 
     def controller_client_creator(self, controller_info: dict):
         self.client_list = {}
@@ -171,7 +173,7 @@ class Controller:
 
 
 if __name__ == '__main__':
-    controller = Controller()
+    
     controller_info = {
                 'Delta PLC': {'Controller ID': 3,
                                 'Controller Type': 'PLC Delta',
@@ -202,5 +204,6 @@ if __name__ == '__main__':
                                 'Controller Unit': None, 
                                 'Controller Count Pin IN': 0, 
                                 'Controller Count Pin OUT': 4}                                              
-                } 
-    controller.controller_client_creator(controller_info)
+                }
+    controller = Controller(controller_info) 
+    # controller.controller_client_creator(controller_info)
