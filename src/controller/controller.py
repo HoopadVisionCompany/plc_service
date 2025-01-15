@@ -147,7 +147,7 @@ class Controller(metaclass=SingletonMeta):
 
         # Log the initialization
         self.controller.logger.info("................Controller initialized................")
-        
+
         self.controller_info = controller_info
         self.controller_client_creator(controller_info)
 
@@ -163,10 +163,27 @@ class Controller(metaclass=SingletonMeta):
                     self.client_list[device['Controller ID']] = client
             else:
                 print(f"Device {device_name} Client is Not Defined!")
-            # print(self.client_list)
 
-    def controller_gpio(self, controller_type: str, controller_protocol: str, controller_pins: list):
-        pass
+    def controller_gpio(self, controller_info: dict, controller_event: dict):
+        client_registers = {}
+        registers_list = []
+        for clnt in controller_info.values():
+            if clnt['Controller ID'] == controller_event['Controller ID']:
+                if clnt['Controller Type'] == 'PLC Delta':
+                    for pin in controller_event['Pin List']:
+                        if clnt['Controller Protocol'] == 'Ethernet':
+                            registers_list.append(pin+2048)
+                        elif clnt['Controller Protocol'] == 'Serial':
+                            registers_list.append(pin+2049)
+                    client_registers[clnt['Controller ID']] = registers_list
+                else:
+                    print(f"Register Address for Device {clnt['Controller Type']} is Not Defined!")
+                    client_registers = None
+        
+        print(f'{registers_list=}')
+        print(f'{client_registers=}')
+        return client_registers
+
 
     def controller_action(self, scenario: str, controller_client, controller_registers: list, controller_id: int, controller_type: str, controller_protocol: str):
         pass
@@ -175,7 +192,7 @@ class Controller(metaclass=SingletonMeta):
 if __name__ == '__main__':
     
     controller_info = {
-                'Delta PLC': {'Controller ID': 3,
+                'Delta PLC': {'Controller ID': 1,
                                 'Controller Type': 'PLC Delta',
                                 'Controller Protocol': 'Ethernet', 
                                 'Controller IP': '192.168.10.5', 
@@ -183,9 +200,9 @@ if __name__ == '__main__':
                                 'Controller Driver': None, 
                                 'Controller Unit': 1, 
                                 'Controller Count Pin IN': 8, 
-                                'Controller Count Pin OUT': 4},
+                                'Controller Count Pin OUT': 3},
 
-                    'bluepill': {'Controller ID': 20,
+                    'bluepill': {'Controller ID': 2,
                                 'Controller Type': 'ARM Micro-controller',
                                 'Controller Protocol': 'Serial', 
                                 'Controller IP': None, 
@@ -195,7 +212,17 @@ if __name__ == '__main__':
                                 'Controller Count Pin IN': 10, 
                                 'Controller Count Pin OUT': 10},
 
-                'ماژول رله': {'Controller ID': 100,
+                'PLC دلتا': {'Controller ID': 3,
+                                'Controller Type': 'PLC Delta',
+                                'Controller Protocol': 'Serial', 
+                                'Controller IP': None, 
+                                'Controller Port': None, 
+                                'Controller Driver': "/dev/ttyUSB0", 
+                                'Controller Unit': 1, 
+                                'Controller Count Pin IN': 8, 
+                                'Controller Count Pin OUT': 2},
+
+                'ماژول رله': {'Controller ID': 4,
                                 'Controller Type': 'Relay Module',
                                 'Controller Protocol': 'Ethernet', 
                                 'Controller IP': '192.168.1.16', 
@@ -205,5 +232,27 @@ if __name__ == '__main__':
                                 'Controller Count Pin IN': 0, 
                                 'Controller Count Pin OUT': 4}                                              
                 }
-    controller = Controller(controller_info) 
-    # controller.controller_client_creator(controller_info)
+    
+    controller_event_1 = {'Controller ID':1,
+                        'Pin List': [0, 1, 2],
+                        'Pin Type': [],
+                        'Scenario': ''
+    }    
+
+    controller_event_2 = {'Controller ID':2,
+                        'Pin List': [0, 1],
+                        'Pin Type': [],
+                        'Scenario': ''
+    }  
+
+    controller_event_3 = {'Controller ID':3,
+                        'Pin List': [0, 1],
+                        'Pin Type': [],
+                        'Scenario': ''
+    }
+
+    events = [controller_event_1, controller_event_2, controller_event_3]
+    controller = Controller(controller_info)
+
+    for event in events:
+        controller.controller_gpio(controller_info, event)
