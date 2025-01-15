@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from pymongo.errors import DuplicateKeyError
 
 sys.path.append("..")
-from src.plc.service import PLCCollectionCreator, PlcCollection
+from src.controller_backend.service import PLCCollectionCreator, PlcCollection
 from src.database.db import DbBuilder
 from src.utils.patterns.builders import PLCDataBuilder
 from src.utils.exceptions.custom_exceptions import CustomException404

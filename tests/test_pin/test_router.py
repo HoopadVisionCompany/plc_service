@@ -11,7 +11,7 @@ sys.path.append("..")
 from src.pin.service import PinCollectionCreator, PinCollection
 from src.database.db import DbBuilder
 from src.utils.patterns.builders import PLCDataBuilder, PinDataBuilder
-from src.plc.service import PlcCollection, PLCCollectionCreator
+from src.controller_backend.service import PlcCollection, PLCCollectionCreator
 from src.utils.exceptions.custom_exceptions import CustomException404
 from pymongo.errors import DuplicateKeyError
 
