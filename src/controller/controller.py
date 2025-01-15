@@ -164,8 +164,8 @@ class Controller(metaclass=SingletonMeta):
             else:
                 print(f"Device {device_name} Client is Not Defined!")
 
+
     def controller_gpio(self, controller_info: dict, controller_event: dict):
-        client_registers = {}
         registers_list = []
         for clnt in controller_info.values():
             if clnt['Controller ID'] == controller_event['Controller ID']:
@@ -175,18 +175,34 @@ class Controller(metaclass=SingletonMeta):
                             registers_list.append(pin+2048)
                         elif clnt['Controller Protocol'] == 'Serial':
                             registers_list.append(pin+2049)
-                    client_registers[clnt['Controller ID']] = registers_list
                 else:
                     print(f"Register Address for Device {clnt['Controller Type']} is Not Defined!")
-                    client_registers = None
-        
+                    registers_list = None
         print(f'{registers_list=}')
-        print(f'{client_registers=}')
-        return client_registers
+        return registers_list
 
 
-    def controller_action(self, scenario: str, controller_client, controller_registers: list, controller_id: int, controller_type: str, controller_protocol: str):
-        pass
+    def controller_action(self, controller_info: dict, controller_clients: list, controller_event: dict):
+        client_registers = self.controller_gpio(controller_info, controller_event)
+        for register in client_registers:
+            if controller_event['Scenario'] == 'Auto Alarm':
+                pass
+            elif controller_event['Scenario'] == 'Auto Caller':
+                pass
+            elif controller_event['Scenario'] == 'Auto Open':
+                pass
+            elif controller_event['Scenario'] == 'Manual Alarm ON':
+                pass
+            elif controller_event['Scenario'] == 'Manual Alarm OFF':
+                pass
+            elif controller_event['Scenario'] == 'Manual Open':
+                pass
+            elif controller_event['Scenario'] == 'Manual Close':
+                pass
+            elif controller_event['Scenario'] == 'Relay ON':
+                pass
+            elif controller_event['Scenario'] == 'Relay OFF':
+                pass
 
 
 if __name__ == '__main__':
@@ -252,7 +268,7 @@ if __name__ == '__main__':
     }
 
     events = [controller_event_1, controller_event_2, controller_event_3]
+    
     controller = Controller(controller_info)
-
     for event in events:
         controller.controller_gpio(controller_info, event)
