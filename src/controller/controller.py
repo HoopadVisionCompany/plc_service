@@ -93,7 +93,7 @@ class Controller(metaclass=SingletonMeta):
                     Validation:
                         Controller Name -> str : Arbitrary Name
                         Controller ID -> str : UUID4 (Mongodb)
-                        Controller Type -> str : Fixed Names (PLC Delta, PLC Siemens, ARM Micro-controller, Relay Module)
+                        Controller Type -> str : Fixed Names (PLC Delta, PLC Siemens, Micro-controller, Arduino, Raspberry Pi, Relay Module)
                         Controller Protocol -> str : Fixed Names (Ethernet, Serial)
                         Controller IP -> str/NoneType : IP Address
                         Controller Port -> int/NoneType : Port Address
@@ -176,7 +176,7 @@ class Controller(metaclass=SingletonMeta):
         retry_delay = 1 # MUST ADDED TO .ENV
         created = False
         name_counter = 0
-        controller_names = controller_info.keys()        
+        controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
             controller_name = controller_names[name_counter]
             name_counter += 1
@@ -236,7 +236,7 @@ class Controller(metaclass=SingletonMeta):
                         elif controller['Controller Protocol'] == 'Serial':
                             registers_list.append(pin+2049)
                 else:
-                    print(f"Register Address for Device {controller['Controller Type']} is Not Defined!")
+                    print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
                     registers_list = None
         print(f'{registers_list=}')
         return registers_list
@@ -278,7 +278,7 @@ if __name__ == '__main__':
                                 'Controller Count Pin OUT': 3},
 
                     'bluepill': {'Controller ID': 20,
-                                'Controller Type': 'ARM Micro-controller',
+                                'Controller Type': 'Micro-controller',
                                 'Controller Protocol': 'Serial', 
                                 'Controller IP': None, 
                                 'Controller Port': None, 
