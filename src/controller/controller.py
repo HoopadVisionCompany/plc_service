@@ -149,41 +149,100 @@ class Controller(metaclass=SingletonMeta):
         self.controller.logger.info("................Controller initialized................")
 
         self.controller_info = controller_info
-        self.controller_client_creator(controller_info)
+        clients_list, clients_protocol = self.controller_client_creator(controller_info)
+        self.controller_client_connector(clients_list, clients_protocol, controller_info)
 
     def controller_client_creator(self, controller_info: dict):
-        self.client_list = {}
-        for device_name, device in controller_info.items():
-            if device['Controller Type'] == 'PLC Delta':
-                if device['Controller Protocol'] == 'Ethernet':
-                    client = ModbusClient(host=device['Controller IP'], port=device['Controller Port'], timeout=3, unit_id=device['Controller Unit'])
-                    self.client_list[device['Controller ID']] = client
-                elif device['Controller Protocol'] == 'Serial':
-                    client = ModbusSerialClient(method="rtu", port=device['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
-                    self.client_list[device['Controller ID']] = client
+        self.clients_list = {}
+        self.clients_protocol = {}
+        for controller_name, controller in controller_info.items():
+            if controller['Controller Type'] == 'PLC Delta':
+                if controller['Controller Protocol'] == 'Ethernet':
+                    client = ModbusClient(host=controller['Controller IP'], port=controller['Controller Port'], timeout=3, unit_id=controller['Controller Unit'])
+                    self.clients_list[controller['Controller ID']] = client
+                    self.clients_protocol[controller['Controller ID']] = 'Ethernet'
+                elif controller['Controller Protocol'] == 'Serial':
+                    client = ModbusSerialClient(method="rtu", port=controller['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
+                    self.clients_list[controller['Controller ID']] = client
+                    self.clients_protocol[controller['Controller ID']] = 'Serial'
             else:
-                print(f"Device {device_name} Client is Not Defined!")
+                print(f"Controller [{controller_name}] Client is Not Defined!")
+                self.clients_list[controller['Controller ID']] = None
+                self.clients_protocol[controller['Controller ID']] = None
+        return self.clients_list, self.clients_protocol
 
+    def controller_client_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
+        max_retries = 3 # MUST ADDED TO .ENV
+        retry_delay = 1 # MUST ADDED TO .ENV
+        created = False
+        name_counter = 0
+        controller_names = controller_info.keys()        
+        for controller_id, client in clients_list.items():
+            controller_name = controller_names[name_counter]
+            name_counter += 1
+            if clients_protocol[controller_id] == 'Ethernet':
+                retries = 0
+                # t1 = datetime.now()
+                while retries < max_retries:
+                    try:
+                        if client.open():
+                            print(f"Controller [{controller_name}] Client Connected")
+                            created = True
+                            break
+                        else:
+                            print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
+                            retries += 1
+                            time.sleep(retry_delay)
+                    except Exception as e:
+                        print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
+                        print(f"Error: {e}")
+                        retries += 1
+                        time.sleep(retry_delay)
+                if created is False:
+                    print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
+                # t2 = datetime.now()
+                # print(f"..........................elapsed time: {t2 - t1}")
+            elif clients_protocol[controller_id] == 'Serial':
+                retries = 0
+                # t1 = datetime.now()
+                while retries < max_retries:
+                    try:
+                        if client.connect():
+                            print(f"Controller [{controller_name}] Client Connected")
+                            created = True
+                            break
+                        else:
+                            print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
+                            retries += 1
+                            time.sleep(retry_delay)
+                    except Exception as e:
+                        print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
+                        print(f"Error: {e}")
+                        retries += 1
+                        time.sleep(retry_delay)
+                if created is False:
+                    print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
+                # t2 = datetime.now()
+                # print(f"..........................elapsed time: {t2 - t1}")
 
-    def controller_gpio(self, controller_info: dict, controller_event: dict):
+    def controller_register_creator(self, controller_info: dict, controller_event: dict):
         registers_list = []
-        for clnt in controller_info.values():
-            if clnt['Controller ID'] == controller_event['Controller ID']:
-                if clnt['Controller Type'] == 'PLC Delta':
+        for controller in controller_info.values():
+            if controller['Controller ID'] == controller_event['Controller ID']:
+                if controller['Controller Type'] == 'PLC Delta':
                     for pin in controller_event['Pin List']:
-                        if clnt['Controller Protocol'] == 'Ethernet':
+                        if controller['Controller Protocol'] == 'Ethernet':
                             registers_list.append(pin+2048)
-                        elif clnt['Controller Protocol'] == 'Serial':
+                        elif controller['Controller Protocol'] == 'Serial':
                             registers_list.append(pin+2049)
                 else:
-                    print(f"Register Address for Device {clnt['Controller Type']} is Not Defined!")
+                    print(f"Register Address for Device {controller['Controller Type']} is Not Defined!")
                     registers_list = None
         print(f'{registers_list=}')
         return registers_list
-
-
+    
     def controller_action(self, controller_info: dict, controller_clients: list, controller_event: dict):
-        client_registers = self.controller_gpio(controller_info, controller_event)
+        client_registers = self.controller_register_creator(controller_info, controller_event)
         for register in client_registers:
             if controller_event['Scenario'] == 'Auto Alarm':
                 pass
@@ -208,7 +267,7 @@ class Controller(metaclass=SingletonMeta):
 if __name__ == '__main__':
     
     controller_info = {
-                'Delta PLC': {'Controller ID': 1,
+                'Delta PLC': {'Controller ID': 10,
                                 'Controller Type': 'PLC Delta',
                                 'Controller Protocol': 'Ethernet', 
                                 'Controller IP': '192.168.10.5', 
@@ -218,7 +277,7 @@ if __name__ == '__main__':
                                 'Controller Count Pin IN': 8, 
                                 'Controller Count Pin OUT': 3},
 
-                    'bluepill': {'Controller ID': 2,
+                    'bluepill': {'Controller ID': 20,
                                 'Controller Type': 'ARM Micro-controller',
                                 'Controller Protocol': 'Serial', 
                                 'Controller IP': None, 
@@ -228,7 +287,7 @@ if __name__ == '__main__':
                                 'Controller Count Pin IN': 10, 
                                 'Controller Count Pin OUT': 10},
 
-                'PLC دلتا': {'Controller ID': 3,
+                'PLC دلتا': {'Controller ID': 30,
                                 'Controller Type': 'PLC Delta',
                                 'Controller Protocol': 'Serial', 
                                 'Controller IP': None, 
@@ -238,7 +297,7 @@ if __name__ == '__main__':
                                 'Controller Count Pin IN': 8, 
                                 'Controller Count Pin OUT': 2},
 
-                'ماژول رله': {'Controller ID': 4,
+                'ماژول رله': {'Controller ID': 40,
                                 'Controller Type': 'Relay Module',
                                 'Controller Protocol': 'Ethernet', 
                                 'Controller IP': '192.168.1.16', 
@@ -249,19 +308,19 @@ if __name__ == '__main__':
                                 'Controller Count Pin OUT': 4}                                              
                 }
     
-    controller_event_1 = {'Controller ID':1,
+    controller_event_1 = {'Controller ID':10,
                         'Pin List': [0, 1, 2],
                         'Pin Type': [],
                         'Scenario': ''
     }    
 
-    controller_event_2 = {'Controller ID':2,
+    controller_event_2 = {'Controller ID':20,
                         'Pin List': [0, 1],
                         'Pin Type': [],
                         'Scenario': ''
     }  
 
-    controller_event_3 = {'Controller ID':3,
+    controller_event_3 = {'Controller ID':30,
                         'Pin List': [0, 1],
                         'Pin Type': [],
                         'Scenario': ''
@@ -271,4 +330,4 @@ if __name__ == '__main__':
     
     controller = Controller(controller_info)
     for event in events:
-        controller.controller_gpio(controller_info, event)
+        controller.controller_register_creator(controller_info, event)
