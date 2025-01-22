@@ -190,61 +190,44 @@ class Controller(metaclass=SingletonMeta):
                 self.clients_protocol[controller['Controller ID']] = None
         return self.clients_list, self.clients_protocol
 
-    def controller_client_selector():
-        pass
+    def controller_client_selector(self, client_protocol: str, client):
+        if client_protocol == 'Ethernet':
+            return client.open()
+        elif client_protocol == 'Serial':
+            return client.connect()
+        else:
+            return None
+
     def controller_client_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
         max_retries = 3 # MUST ADDED TO .ENV
-        retry_delay = 1 # MUST ADDED TO .ENV
+        retry_delay = 0.1 # MUST ADDED TO .ENV
         created = False
         name_counter = 0
         controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
             controller_name = controller_names[name_counter]
             name_counter += 1
-            if clients_protocol[controller_id] == 'Ethernet':
-                retries = 0
-                # t1 = datetime.now()
-                while retries < max_retries:
-                    try:
-                        if client.open():
-                            print(f"Controller [{controller_name}] Client Connected")
-                            created = True
-                            break
-                        else:
-                            print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
-                            retries += 1
-                            time.sleep(retry_delay)
-                    except Exception as e:
+            retries = 0
+            # t1 = datetime.now()
+            while retries < max_retries:
+                try:
+                    if self.controller_client_selector(clients_protocol[controller_id], client):
+                        print(f"Controller [{controller_name}] Client Connected")
+                        created = True
+                        break
+                    else:
                         print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
-                        print(f"Error: {e}")
                         retries += 1
                         time.sleep(retry_delay)
-                if created is False:
-                    print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
-                # t2 = datetime.now()
-                # print(f"..........................elapsed time: {t2 - t1}")
-            elif clients_protocol[controller_id] == 'Serial':
-                retries = 0
-                # t1 = datetime.now()
-                while retries < max_retries:
-                    try:
-                        if client.connect():
-                            print(f"Controller [{controller_name}] Client Connected")
-                            created = True
-                            break
-                        else:
-                            print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
-                            retries += 1
-                            time.sleep(retry_delay)
-                    except Exception as e:
-                        print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
-                        print(f"Error: {e}")
-                        retries += 1
-                        time.sleep(retry_delay)
-                if created is False:
-                    print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
-                # t2 = datetime.now()
-                # print(f"..........................elapsed time: {t2 - t1}")
+                except Exception as e:
+                    print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
+                    print(f"Error: {e}")
+                    retries += 1
+                    time.sleep(retry_delay)
+            if created is False:
+                print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
+            # t2 = datetime.now()
+            # print(f"..........................elapsed time: {t2 - t1}")
 
     def controller_register_creator(self, controller_info: dict, controller_event: dict):
         registers_list = []
