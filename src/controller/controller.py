@@ -149,10 +149,29 @@ class Controller(metaclass=SingletonMeta):
         self.controller.logger.info("................Controller initialized................")
 
         self.controller_info = controller_info
-        clients_list, clients_protocol = self.controller_client_creator(controller_info)
-        self.controller_client_connector(clients_list, clients_protocol, controller_info)
+        self.clients_list, self.clients_protocol = self.controller_client_creator(controller_info)
+        self.controller_client_connector(self.clients_list, self.clients_protocol, controller_info)
 
     def controller_client_creator(self, controller_info: dict):
+        clients_list = {}
+        clients_protocol = {}
+        for controller_name, controller in controller_info.items():
+            if controller['Controller Type'] == 'PLC Delta':
+                if controller['Controller Protocol'] == 'Ethernet':
+                    client = ModbusClient(host=controller['Controller IP'], port=controller['Controller Port'], timeout=3, unit_id=controller['Controller Unit'])
+                    clients_list[controller['Controller ID']] = client
+                    clients_protocol[controller['Controller ID']] = 'Ethernet'
+                elif controller['Controller Protocol'] == 'Serial':
+                    client = ModbusSerialClient(method="rtu", port=controller['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
+                    clients_list[controller['Controller ID']] = client
+                    clients_protocol[controller['Controller ID']] = 'Serial'
+            else:
+                print(f"Controller [{controller_name}] Client is Not Defined!")
+                clients_list[controller['Controller ID']] = None
+                clients_protocol[controller['Controller ID']] = None
+        return clients_list, clients_protocol
+
+    def _controller_client_creator(self, controller_info: dict): # Temp method (must be deleted)
         self.clients_list = {}
         self.clients_protocol = {}
         for controller_name, controller in controller_info.items():
@@ -171,6 +190,8 @@ class Controller(metaclass=SingletonMeta):
                 self.clients_protocol[controller['Controller ID']] = None
         return self.clients_list, self.clients_protocol
 
+    def controller_client_selector():
+        pass
     def controller_client_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
         max_retries = 3 # MUST ADDED TO .ENV
         retry_delay = 1 # MUST ADDED TO .ENV
