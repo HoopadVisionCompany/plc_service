@@ -171,25 +171,6 @@ class Controller(metaclass=SingletonMeta):
                 clients_protocol[controller['Controller ID']] = None
         return clients_list, clients_protocol
 
-    def _controller_client_creator(self, controller_info: dict): # Temp method (must be deleted)
-        self.clients_list = {}
-        self.clients_protocol = {}
-        for controller_name, controller in controller_info.items():
-            if controller['Controller Type'] == 'PLC Delta':
-                if controller['Controller Protocol'] == 'Ethernet':
-                    client = ModbusClient(host=controller['Controller IP'], port=controller['Controller Port'], timeout=3, unit_id=controller['Controller Unit'])
-                    self.clients_list[controller['Controller ID']] = client
-                    self.clients_protocol[controller['Controller ID']] = 'Ethernet'
-                elif controller['Controller Protocol'] == 'Serial':
-                    client = ModbusSerialClient(method="rtu", port=controller['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
-                    self.clients_list[controller['Controller ID']] = client
-                    self.clients_protocol[controller['Controller ID']] = 'Serial'
-            else:
-                print(f"Controller [{controller_name}] Client is Not Defined!")
-                self.clients_list[controller['Controller ID']] = None
-                self.clients_protocol[controller['Controller ID']] = None
-        return self.clients_list, self.clients_protocol
-
     def controller_client_selector(self, client_protocol: str, client):
         if client_protocol == 'Ethernet':
             return client.open()
@@ -199,7 +180,7 @@ class Controller(metaclass=SingletonMeta):
             return None
 
     def controller_client_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
-        max_retries = 3 # MUST ADDED TO .ENV
+        max_retries = 1 # MUST ADDED TO .ENV
         retry_delay = 0.1 # MUST ADDED TO .ENV
         created = False
         name_counter = 0
@@ -245,8 +226,49 @@ class Controller(metaclass=SingletonMeta):
         print(f'{registers_list=}')
         return registers_list
     
-    def controller_action(self, controller_info: dict, controller_clients: list, controller_event: dict):
+    def controller_output_control(self, client, register, status):
+        retries = 3
+        delay = 0.25
+        try:
+            opened = False
+            for attempt in range(retries):
+                if list(self.clients_protocol.values())[0]== 'Ethernet':
+                    write_coil = client.write_single_coil(register, status)
+                elif list(self.clients_protocol.values())[0]== 'Serial':
+                    write_coil = client.write_coil(register, status)
+                else:
+                    return None
+                
+                if write_coil:
+                    time.sleep(delay)  # Give some time for the PLC to process the command
+                    read_value = client.read_coils(register, 1)  # Read back the coil value to verify - What is 1 ?!
+                    if read_value is not None and read_value[0] == True:
+                        opened = True
+                        print(f"Gate {gate_id} with output {PLC.output_list[index]} manually is opening...")
+                        return "True Open Manual"
+                    else:
+                        log_message = f"[Gate {gate_id}] Manually NOT opened -> Retrying to open...(Attempt {attempt + 1}/{retries})"
+                        logger.warning(log_message)
+                        print(f"Attempt {attempt + 1}: Coil {register_address} not set correctly. Retrying...")
+                else:
+                    log_message = f"[Gate {gate_id}] Manually Failed to write with write_single_coil() -> Retrying to write on coil {register_address}...(Attempt {attempt + 1}/{retries})"
+                    logger.warning(log_message)
+                    print(
+                        f"Attempt {attempt + 1}: Manually Failed to write to coil {register_address}. Retrying...")
+            if opened is False:
+                log_message = f"[Gate {gate_id}] Manually NOT opened!"
+                logger.error(log_message)
+                print("Failed to write and verify coil value after retries.")
+        except Exception as e:
+            pass
+            # log_message = f"[Gate {gate_id}] [Client {client}] Manually NOT opened:"
+            # logger.error(log_message)
+            # log_message = f"{e}"
+            # logger.error(log_message)        
+
+    def controller_action(self, controller_info: dict, controller_event: dict):
         client_registers = self.controller_register_creator(controller_info, controller_event)
+        client = self.clients_list[controller_event['Controller ID']]
         for register in client_registers:
             if controller_event['Scenario'] == 'Auto Alarm':
                 pass
@@ -263,75 +285,101 @@ class Controller(metaclass=SingletonMeta):
             elif controller_event['Scenario'] == 'Manual Close':
                 pass
             elif controller_event['Scenario'] == 'Relay ON':
-                pass
+                self.controller_output_control(client=client, register=register, status=True)
+                print(f'Relay ON for register {register}')
             elif controller_event['Scenario'] == 'Relay OFF':
-                pass
+                self.controller_output_control(client=client, register=register, status=False)
+                print(f'Relay OFF for register {register}')
 
 
 if __name__ == '__main__':
-    
-    controller_info = {
-                'Delta PLC': {'Controller ID': 10,
-                                'Controller Type': 'PLC Delta',
-                                'Controller Protocol': 'Ethernet', 
-                                'Controller IP': '192.168.10.5', 
-                                'Controller Port': 502, 
-                                'Controller Driver': None, 
-                                'Controller Unit': 1, 
-                                'Controller Count Pin IN': 8, 
-                                'Controller Count Pin OUT': 3},
+    test_type = 2
+    if test_type == 1:
+        controller_info = {
+                    'Delta PLC': {'Controller ID': 10,
+                                    'Controller Type': 'PLC Delta',
+                                    'Controller Protocol': 'Ethernet', 
+                                    'Controller IP': '192.168.10.5', 
+                                    'Controller Port': 502, 
+                                    'Controller Driver': None, 
+                                    'Controller Unit': 1, 
+                                    'Controller Count Pin IN': 8, 
+                                    'Controller Count Pin OUT': 3},
 
-                    'bluepill': {'Controller ID': 20,
-                                'Controller Type': 'Micro-controller',
-                                'Controller Protocol': 'Serial', 
-                                'Controller IP': None, 
-                                'Controller Port': None, 
-                                'Controller Driver': "/dev/ttyUSB0", 
-                                'Controller Unit': 2, 
-                                'Controller Count Pin IN': 10, 
-                                'Controller Count Pin OUT': 10},
+                        'bluepill': {'Controller ID': 20,
+                                    'Controller Type': 'Micro-controller',
+                                    'Controller Protocol': 'Serial', 
+                                    'Controller IP': None, 
+                                    'Controller Port': None, 
+                                    'Controller Driver': "/dev/ttyUSB0", 
+                                    'Controller Unit': 2, 
+                                    'Controller Count Pin IN': 10, 
+                                    'Controller Count Pin OUT': 10},
 
-                'PLC دلتا': {'Controller ID': 30,
-                                'Controller Type': 'PLC Delta',
-                                'Controller Protocol': 'Serial', 
-                                'Controller IP': None, 
-                                'Controller Port': None, 
-                                'Controller Driver': "/dev/ttyUSB0", 
-                                'Controller Unit': 1, 
-                                'Controller Count Pin IN': 8, 
-                                'Controller Count Pin OUT': 2},
+                    'PLC دلتا': {'Controller ID': 30,
+                                    'Controller Type': 'PLC Delta',
+                                    'Controller Protocol': 'Serial', 
+                                    'Controller IP': None, 
+                                    'Controller Port': None, 
+                                    'Controller Driver': "/dev/ttyUSB0", 
+                                    'Controller Unit': 1, 
+                                    'Controller Count Pin IN': 8, 
+                                    'Controller Count Pin OUT': 2},
 
-                'ماژول رله': {'Controller ID': 40,
-                                'Controller Type': 'Relay Module',
-                                'Controller Protocol': 'Ethernet', 
-                                'Controller IP': '192.168.1.16', 
-                                'Controller Port': 8080, 
-                                'Controller Driver': None, 
-                                'Controller Unit': None, 
-                                'Controller Count Pin IN': 0, 
-                                'Controller Count Pin OUT': 4}                                              
-                }
-    
-    controller_event_1 = {'Controller ID':10,
-                        'Pin List': [0, 1, 2],
-                        'Pin Type': [],
-                        'Scenario': ''
-    }    
+                    'ماژول رله': {'Controller ID': 40,
+                                    'Controller Type': 'Relay Module',
+                                    'Controller Protocol': 'Ethernet', 
+                                    'Controller IP': '192.168.1.16', 
+                                    'Controller Port': 8080, 
+                                    'Controller Driver': None, 
+                                    'Controller Unit': None, 
+                                    'Controller Count Pin IN': 0, 
+                                    'Controller Count Pin OUT': 4}                                              
+                    }
+        
+        controller_event_1 = {'Controller ID':10,
+                            'Pin List': [0, 1, 2],
+                            'Pin Type': [],
+                            'Scenario': ''
+        }    
 
-    controller_event_2 = {'Controller ID':20,
-                        'Pin List': [0, 1],
-                        'Pin Type': [],
-                        'Scenario': ''
-    }  
+        controller_event_2 = {'Controller ID':20,
+                            'Pin List': [0, 1],
+                            'Pin Type': [],
+                            'Scenario': ''
+        }  
 
-    controller_event_3 = {'Controller ID':30,
-                        'Pin List': [0, 1],
-                        'Pin Type': [],
-                        'Scenario': ''
-    }
+        controller_event_3 = {'Controller ID':30,
+                            'Pin List': [0, 1],
+                            'Pin Type': [],
+                            'Scenario': ''
+        }
 
-    events = [controller_event_1, controller_event_2, controller_event_3]
-    
-    controller = Controller(controller_info)
-    for event in events:
-        controller.controller_register_creator(controller_info, event)
+        events = [controller_event_1, controller_event_2, controller_event_3]
+        
+        controller = Controller(controller_info)
+        for event in events:
+            controller.controller_register_creator(controller_info, event)
+
+    elif test_type == 2:
+        controller_info = {
+                    'Delta PLC': {'Controller ID': 10,
+                                    'Controller Type': 'PLC Delta',
+                                    'Controller Protocol': 'Ethernet', 
+                                    'Controller IP': '192.168.10.5', 
+                                    'Controller Port': 502, 
+                                    'Controller Driver': None, 
+                                    'Controller Unit': 1, 
+                                    'Controller Count Pin IN': 8, 
+                                    'Controller Count Pin OUT': 3}}
+
+        controller_event_1 = {'Controller ID':10,
+                            'Pin List': [0, 1, 2],
+                            'Pin Type': [],
+                            'Scenario': 'Relay OFF'
+        }
+
+        events = [controller_event_1]
+        controller = Controller(controller_info)
+        for event in events:
+            controller.controller_action(controller_info, event)
