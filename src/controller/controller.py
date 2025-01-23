@@ -171,7 +171,7 @@ class Controller(metaclass=SingletonMeta):
                 clients_protocol[controller['Controller ID']] = None
         return clients_list, clients_protocol
 
-    def controller_client_selector(self, client_protocol: str, client):
+    def controller_client_type_selector(self, client_protocol: str, client):
         if client_protocol == 'Ethernet':
             return client.open()
         elif client_protocol == 'Serial':
@@ -192,7 +192,7 @@ class Controller(metaclass=SingletonMeta):
             # t1 = datetime.now()
             while retries < max_retries:
                 try:
-                    if self.controller_client_selector(clients_protocol[controller_id], client):
+                    if self.controller_client_type_selector(clients_protocol[controller_id], client):
                         print(f"Controller [{controller_name}] Client Connected")
                         created = True
                         break
@@ -210,9 +210,9 @@ class Controller(metaclass=SingletonMeta):
             # t2 = datetime.now()
             # print(f"..........................elapsed time: {t2 - t1}")
 
-    def controller_register_creator(self, controller_info: dict, controller_event: dict):
+    def controller_register_creator(self, controller_event: dict):
         registers_list = []
-        for controller in controller_info.values():
+        for controller in self.controller_info.values():
             if controller['Controller ID'] == controller_event['Controller ID']:
                 if controller['Controller Type'] == 'PLC Delta':
                     for pin in controller_event['Pin List']:
@@ -226,7 +226,7 @@ class Controller(metaclass=SingletonMeta):
         print(f'{registers_list=}')
         return registers_list
     
-    def controller_output_control(self, client, register, status):
+    def controller_output_control(self, client_unit, client, register, status):
         retries = 3
         delay = 0.25
         try:
@@ -241,7 +241,7 @@ class Controller(metaclass=SingletonMeta):
                 
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(register, 1)  # Read back the coil value to verify - What is 1 ?!
+                    read_value = client.read_coils(register, client_unit)  # Read back the coil value to verify - What is 1 ?!
                     if read_value is not None and read_value[0] == True:
                         opened = True
                         print(f"Gate {gate_id} with output {PLC.output_list[index]} manually is opening...")
@@ -266,9 +266,24 @@ class Controller(metaclass=SingletonMeta):
             # log_message = f"{e}"
             # logger.error(log_message)        
 
-    def controller_action(self, controller_info: dict, controller_event: dict):
-        client_registers = self.controller_register_creator(controller_info, controller_event)
-        client = self.clients_list[controller_event['Controller ID']]
+    def controller_info_extractor(self, controller_event: dict):
+        for controller_name, controller in controller_info.items():
+            if controller['Controller ID'] == controller_event['Controller ID']:
+                self.controller_info_name =  controller_name
+                self.controller_info_id =  controller['Controller ID']
+                self.controller_info_type =  controller['Controller Type']
+                self.controller_info_protocol=  controller['Controller Protocol']
+                self.controller_info_ip =  controller['Controller IP']
+                self.controller_info_port =  controller['Controller Port']
+                self.controller_info_driver =  controller['Controller Driver']
+                self.controller_info_unit =  controller['Controller Unit']
+                self.controller_info_cpi =  controller['Controller Count Pin IN']
+                self.controller_info_cpo =  controller['Controller Count Pin OUT']
+
+    def controller_action(self, controller_event: dict):
+        self.controller_info_extractor(controller_event)
+        client_registers = self.controller_register_creator(controller_event)
+        client = self.clients_list[self.controller_info_id]
         for register in client_registers:
             if controller_event['Scenario'] == 'Auto Alarm':
                 pass
@@ -285,10 +300,10 @@ class Controller(metaclass=SingletonMeta):
             elif controller_event['Scenario'] == 'Manual Close':
                 pass
             elif controller_event['Scenario'] == 'Relay ON':
-                self.controller_output_control(client=client, register=register, status=True)
+                self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
                 print(f'Relay ON for register {register}')
             elif controller_event['Scenario'] == 'Relay OFF':
-                self.controller_output_control(client=client, register=register, status=False)
+                self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
                 print(f'Relay OFF for register {register}')
 
 
@@ -371,9 +386,20 @@ if __name__ == '__main__':
                                     'Controller Driver': None, 
                                     'Controller Unit': 1, 
                                     'Controller Count Pin IN': 8, 
-                                    'Controller Count Pin OUT': 3}}
+                                    'Controller Count Pin OUT': 3},
 
-        controller_event_1 = {'Controller ID':10,
+                    'PLC دلتا': {'Controller ID': 30,
+                                    'Controller Type': 'PLC Delta',
+                                    'Controller Protocol': 'Serial', 
+                                    'Controller IP': None, 
+                                    'Controller Port': None, 
+                                    'Controller Driver': "/dev/ttyUSB0", 
+                                    'Controller Unit': 1000, 
+                                    'Controller Count Pin IN': 8, 
+                                    'Controller Count Pin OUT': 2}                                    
+                                    }
+
+        controller_event_1 = {'Controller ID':30,
                             'Pin List': [0, 1, 2],
                             'Pin Type': [],
                             'Scenario': 'Relay OFF'
@@ -382,4 +408,4 @@ if __name__ == '__main__':
         events = [controller_event_1]
         controller = Controller(controller_info)
         for event in events:
-            controller.controller_action(controller_info, event)
+            controller.controller_action(event)
