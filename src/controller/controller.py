@@ -149,10 +149,10 @@ class Controller(metaclass=SingletonMeta):
         self.controller.logger.info("................Controller initialized................")
 
         self.controller_info = controller_info
-        self.clients_list, self.clients_protocol = self.controller_client_creator(controller_info)
-        self.controller_client_connector(self.clients_list, self.clients_protocol, controller_info)
+        self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
+        self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
 
-    def controller_client_creator(self, controller_info: dict):
+    def controller_clients_creator(self, controller_info: dict):
         clients_list = {}
         clients_protocol = {}
         for controller_name, controller in controller_info.items():
@@ -182,7 +182,7 @@ class Controller(metaclass=SingletonMeta):
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
         max_retries = 1 # MUST ADDED TO .ENV
         retry_delay = 0.1 # MUST ADDED TO .ENV
-        created = False
+        created = False #! Must be connected
         name_counter = 0
         controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
@@ -210,28 +210,6 @@ class Controller(metaclass=SingletonMeta):
             # t2 = datetime.now()
             # print(f"..........................elapsed time: {t2 - t1}")
 
-    def controller_client_connector(self, controller_event: dict):
-        pass
-
-    def controller_register_creator(self, controller_event: dict):
-        registers_list = []
-        for controller in self.controller_info.values():
-            if controller['Controller ID'] == controller_event['Controller ID']:
-                if controller['Controller Type'] == 'PLC Delta':
-                    for pin in controller_event['Pin List']:
-                        if controller['Controller Protocol'] == 'Ethernet':
-                            self.controller_info_pin = pin
-                            registers_list.append(self.controller_info_pin + 2048)                           
-                        elif controller['Controller Protocol'] == 'Serial':
-                            self.controller_info_pin = pin
-                            registers_list.append(self.controller_info_pin + 2049)
-                            
-                else:
-                    print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
-                    registers_list = None
-        print(f'{registers_list=}')
-        return registers_list
-
     def controller_info_extractor(self, controller_event: dict):
         for controller_name, controller in controller_info.items():
             if controller['Controller ID'] == controller_event['Controller ID']:
@@ -246,6 +224,46 @@ class Controller(metaclass=SingletonMeta):
                 self.controller_info_cpi =  controller['Controller Count Pin IN']
                 self.controller_info_cpo =  controller['Controller Count Pin OUT']
 
+    def controller_client_connector(self, client):
+        max_retries = 1 # MUST ADDED TO .ENV
+        retry_delay = 0.1 # MUST ADDED TO .ENV
+        connected = False #! Must be connected
+        retries = 0
+        while retries < max_retries:
+            try:
+                if self.controller_client_type_selector(self.controller_info_protocol, client):
+                    print(f"Controller [{self.controller_info_name}] Client Connected")
+                    connected = True
+                    break
+                else:
+                    print(f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
+                    retries += 1
+                    time.sleep(retry_delay)
+            except Exception as e:
+                print(f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
+                print(f"Exception: {e}")
+                retries += 1
+                time.sleep(retry_delay)
+        if connected is False:
+            print(f"Controller [{self.controller_info_name}] Client NOT connected after {max_retries} retries.")
+
+    def controller_register_creator(self, controller_event: dict):
+        registers_list = []
+        if self.controller_info_id == controller_event['Controller ID']:
+            if self.controller_info_type == 'PLC Delta':
+                for pin in controller_event['Pin List']:
+                    if self.controller_info_protocol == 'Ethernet':
+                        self.controller_info_pin = pin
+                        registers_list.append(self.controller_info_pin + 2048)                           
+                    elif self.controller_info_protocol == 'Serial':
+                        self.controller_info_pin = pin
+                        registers_list.append(self.controller_info_pin + 2049)
+            else:
+                print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
+                registers_list = None
+        print(f'{registers_list=}')
+        return registers_list
+    
     def controller_output_control(self, client_unit: int, client, register: int, status: bool):
         retries = 3     # MUST ADDED TO .ENV
         delay = 0.25    # MUST ADDED TO .ENV
@@ -267,9 +285,10 @@ class Controller(metaclass=SingletonMeta):
                         return True # Must be modified
                     else:
                         print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
-                        self.controller_client_connector()
+                        self.controller_client_connector(client)
                 else:
                         print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
+                        self.controller_client_connector(client)
             if operation_completed is False:
                 print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}]")
                 return False # Must be modified
@@ -278,7 +297,6 @@ class Controller(metaclass=SingletonMeta):
             print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}]")         
             print(f"Exception: {e}")
             return False # Must be modified
- 
 
     def controller_action(self, controller_event: dict):
         self.controller_info_extractor(controller_event)
@@ -287,24 +305,33 @@ class Controller(metaclass=SingletonMeta):
         for register in client_registers:
             if controller_event['Scenario'] == 'Auto Alarm':
                 pass
+
             elif controller_event['Scenario'] == 'Auto Caller':
                 pass
+
             elif controller_event['Scenario'] == 'Auto Open':
                 pass
+
             elif controller_event['Scenario'] == 'Manual Alarm ON':
                 pass
+
             elif controller_event['Scenario'] == 'Manual Alarm OFF':
                 pass
+
             elif controller_event['Scenario'] == 'Manual Open':
                 pass
+
             elif controller_event['Scenario'] == 'Manual Close':
                 pass
+            
             elif controller_event['Scenario'] == 'Relay ON':
-                self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
-                # print(f'Relay ON for register {register}')
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
+
             elif controller_event['Scenario'] == 'Relay OFF':
-                self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                # print(f'Relay OFF for register {register}')
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
+
 
 
 if __name__ == '__main__':
