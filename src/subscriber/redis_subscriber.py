@@ -19,7 +19,7 @@ channel_name = os.getenv('REDIS_CHANNEL_NAME')
 
 def message_handler(message:List[AnyStr]):
     print(f"Received message: {message}, type : {type(message)}")
-    controller_event_dict = create_controller_event_dict(message[0])
+    controller_event_dict = create_controller_event_dict(message)
     print(controller_event_dict)
     controller = Controller({})
     print(controller)
@@ -36,5 +36,5 @@ def subscriber_handler():
     print(f"Subscribed to {channel_name}. Waiting for messages...")
     for message in pubsub.listen():
         if message['type'] == 'message':
-            data = json.loads(message['data'])
+            data = message['data'].decode('utf-8')
             message_handler(data)

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package packages;
+
+service Package {
+   rpc ListPackage(packageRequest) returns (PackageReply) {}
+   rpc ExistPackage(PackageExistRequest) returns (PackageExistReply) {}
+
+}
+
+message packageRequest {
+  string client_key = 1;
+  string type_ai = 2;
+}
+message PackageExistRequest {
+  string client_key = 1;
+  int32 id = 2;
+  string is_superuser = 3;
+  string is_staff = 4;
+  string type_ai = 5;
+
+}
+message PackageReply {
+  repeated int32 id = 1;
+}
+message PackageExistReply {
+  string is_exist = 1;
+}

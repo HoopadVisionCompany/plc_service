@@ -16,6 +16,8 @@ from src.utils.middlewares.exception_middlewares import ExceptionMiddleware
 from src.subscriber.redis_subscriber import subscriber_handler
 from src.scenario.initialize_scenario import initialize
 from src.utils.controller_dict_creator import create_controllers_info_dict
+from src.setting.router import router as setting_router
+
 print(00)
 
 load_dotenv()
@@ -31,6 +33,9 @@ app_gate.include_router(controller_router, tags=["controller"])
 app_gate.include_router(pin_router, tags=["pin"])
 app_gate.include_router(task_router, tags=["task"])
 app_gate.include_router(scenario_router, tags=["scenario"])
+app_gate.include_router(setting_router, tags=["setting"])
+
+
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -45,6 +50,7 @@ app_gate.add_middleware(
 )
 
 controller_info = create_controllers_info_dict()
+print("111111111",controller_info)
 # # temp controller_info (just for test):
 # controller_info = {
 #     'Delta PLC': {'Controller ID': 10,
@@ -58,6 +64,7 @@ controller_info = create_controllers_info_dict()
 #                     'Controller Count Pin OUT': 3}}
 
 controller = Controller(controller_info)
+print(3333333333)
 
 def run_server():
     uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORT")))

@@ -46,8 +46,8 @@ class PinCollection(DbBuilder, CollectionInterface):
 
     def retrieve(self) -> List[Dict[str, Any]]:
         data = list(self.pin_collection.find())
-        if not data:
-            raise CustomException404(message="pin not found")
+        # if not data:
+        #     raise CustomException404(message="pin not found")
         print("list pin")
         return data
 

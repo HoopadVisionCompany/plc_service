@@ -13,4 +13,4 @@ def publish(value):
     print(f"send data {value} to redis")
 
 
-def 
+publish("d7be635c-994f-4db0-89f1-908906b8515a")

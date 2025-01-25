@@ -73,21 +73,26 @@ def create_controller_event_dict(task_id):
     #     "Controller Count Pin IN": controller['count_pin_in'],
     #     "Controller Count Pin OUT": controller['count_pin_out']
     # }
-    controller_event[controller['name']] = [controller["_id"], controller['type'], controller['protocol'],
-                                            controller['ip'], controller['port'], controller['driver'],
-                                            controller['controller_unit'], controller['count_pin_in'],
-                                            controller['count_pin_out']]
+    # controller_event[controller['name']] = [controller["_id"], controller['type'], controller['protocol'],
+    #                                         controller['ip'], controller['port'], controller['driver'],
+    #                                         controller['controller_unit'], controller['count_pin_in'],
+    #                                         controller['count_pin_out']]
+    # controller_event_1 = {'Controller ID': 30,
+    #                       'Pin List': [0, 1, 2],
+    #                       'Pin Type': [],
+    #                       'Scenario': 'Relay OFF'
+    #                       }
 
     pin_list = []
     pin_type = []
     for pin in pins:
         pin_list.append(pin["number"])
         pin_type.append(pin["type"])
+    controller_event['Controller ID'] = controller['_id']
     controller_event['Pin List'] = pin_list
     controller_event['Pin Type'] = pin_type
-    controller_event['scenario'] = scenario["name"]
+    controller_event['Scenario'] = scenario["name"]
     return controller_event
-
 
 # a = create_controller_event_dict("ddb14f3a-7aba-478b-be99-23b7b96cd729")
 # print(a)
