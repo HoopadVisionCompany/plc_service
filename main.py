@@ -16,6 +16,8 @@ from src.utils.middlewares.exception_middlewares import ExceptionMiddleware
 from src.subscriber.redis_subscriber import subscriber_handler
 from src.scenario.initialize_scenario import initialize
 from src.utils.controller_dict_creator import create_controllers_info_dict
+from src.setting.router import router as setting_router
+
 print(00)
 
 load_dotenv()
@@ -31,6 +33,9 @@ app_gate.include_router(controller_router, tags=["controller"])
 app_gate.include_router(pin_router, tags=["pin"])
 app_gate.include_router(task_router, tags=["task"])
 app_gate.include_router(scenario_router, tags=["scenario"])
+app_gate.include_router(setting_router, tags=["setting"])
+
+
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",

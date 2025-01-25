@@ -1,10 +1,11 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from .service import ScenarioCollectionCreator
+from src.utils.auth.authorization import retrieve_user
 
 scenario_factory = ScenarioCollectionCreator()
 scenario_collection = scenario_factory.create_collection()
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(retrieve_user), ])
 
 
 @router.get("/scenario/list")
