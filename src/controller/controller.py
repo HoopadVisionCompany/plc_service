@@ -10,6 +10,7 @@ from pymodbus.client import ModbusSerialClient
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 
+
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
         """
@@ -142,6 +143,8 @@ class Controller(metaclass=SingletonMeta):
                                         'Delay List': [],
                                         'Scenario': ''
                     }
+
+                    Scenarios: 'Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF'
         """
         # Initialize logger
         self.controller = ControllerLogger()
@@ -254,18 +257,18 @@ class Controller(metaclass=SingletonMeta):
             if self.controller_info_type == 'PLC Delta':
                 for pin in controller_event['Pin List']:
                     if self.controller_info_protocol == 'Ethernet':
-                        self.controller_info_pin = pin #.............................................................
-                        registers_list.append(self.controller_info_pin + 2048)                           
+                        # self.controller_info_pin = pin #.............................................................
+                        registers_list.append(pin + 2048)                           
                     elif self.controller_info_protocol == 'Serial':
-                        self.controller_info_pin = pin
-                        registers_list.append(self.controller_info_pin + 2049)
+                        # self.controller_info_pin = pin
+                        registers_list.append(pin + 2049)
             else:
                 print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
     
-    def controller_output_control(self, client_unit: int, client, register: int, status: bool):
+    def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
         retries = 3     # MUST ADDED TO .ENV
         delay = 0.25    # MUST ADDED TO .ENV
         try:
@@ -282,20 +285,20 @@ class Controller(metaclass=SingletonMeta):
                     read_value = client.read_coils(register, client_unit)  # Read back the coil value to verify - What is 1 ?!
                     if read_value is not None and read_value[0] == True:
                         operation_completed = True
-                        print(f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> Set [{status}]")
+                        print(f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
                         return True # Must be modified
                     else:
-                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
+                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
                 else:
-                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
+                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
             if operation_completed is False:
-                print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}]")
+                print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
                 return False # Must be modified
         except Exception as e:
             # pass
-            print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{self.controller_info_pin}] -> Register [{register}] -> NOT Set [{status}]")         
+            print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")         
             print(f"Exception: {e}")
             return False # Must be modified
 
@@ -303,49 +306,24 @@ class Controller(metaclass=SingletonMeta):
         self.controller_info_extractor(controller_event)
         client_registers = self.controller_register_creator(controller_event)
         client = self.clients_list[self.controller_info_id]
-        for idx , register in enumerate(client_registers):
-            if controller_event['Scenario'] == 'Auto Alarm':
-                auto_alarm_on_duration = controller_event['Delay List'][idx]
-                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
-                time.sleep(auto_alarm_on_duration)
-                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{auto_alarm_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+        for idx, register in enumerate(client_registers):
+            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
+                pin_on_duration = controller_event['Delay List'][idx]
+                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=True)
+                time.sleep(pin_on_duration)
+                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=False)
+                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
 
-            elif controller_event['Scenario'] == 'Auto Caller':
-                caller_on_duration = controller_event['Delay List'][idx]
-                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
-                time.sleep(caller_on_duration)
-                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{caller_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Auto Open':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+            elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=True)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
-            elif controller_event['Scenario'] == 'Manual Alarm ON':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+            elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=False)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Manual Alarm OFF':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Manual Open':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Manual Close':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Relay ON':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
-            elif controller_event['Scenario'] == 'Relay OFF':
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-
+            
+            else:
+                print(f"Scenario is not defined. Write its code 🙂")
 
 
 if __name__ == '__main__':
@@ -447,7 +425,14 @@ if __name__ == '__main__':
                             'Scenario': 'Auto Alarm'
         }
 
-        events = [controller_event_1]
+        controller_event_2 = {'Controller ID':10,
+                            'Pin List': [10, 20, 30],
+                            'Pin Type': [],
+                            'Delay List':[100, 200, 300],
+                            'Scenario': 'Relay OFF'
+        }
+
+        events = [controller_event_1, controller_event_2]
         controller = Controller(controller_info)
         for event in events:
             controller.controller_action(event)
