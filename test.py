@@ -1,4 +1,4 @@
-{
+[{
   "_id": "cddefdda-7579-43e4-8624-413624589076",
   "name": "Delta PLC",
   "type": "PLC Delta",
@@ -10,7 +10,7 @@
   "count_pin_out": 8,
   "count_pin_in": 4,
   "count_total_pin": 12
-}
+} ,
 {
   "_id": "821d8f6f-a73b-4f3f-ad88-07e6a914c51c",
   "name": "bluepill",
@@ -23,7 +23,7 @@
   "count_pin_out": 10,
   "count_pin_in": 10,
   "count_total_pin": 20
-}
+}]
 
 [{
   "_id": "45cf00c0-b5cf-425a-8805-60e15e9d0807",

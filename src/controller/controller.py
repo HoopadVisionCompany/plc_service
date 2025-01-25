@@ -211,7 +211,7 @@ class Controller(metaclass=SingletonMeta):
             # print(f"..........................elapsed time: {t2 - t1}")
 
     def controller_info_extractor(self, controller_event: dict):
-        for controller_name, controller in controller_info.items():
+        for controller_name, controller in self.controller_info.items():
             if controller['Controller ID'] == controller_event['Controller ID']:
                 self.controller_info_name =  controller_name
                 self.controller_info_id =  controller['Controller ID']
