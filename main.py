@@ -50,6 +50,7 @@ app_gate.add_middleware(
 )
 
 controller_info = create_controllers_info_dict()
+print("111111111",controller_info)
 # # temp controller_info (just for test):
 # controller_info = {
 #     'Delta PLC': {'Controller ID': 10,
@@ -63,6 +64,7 @@ controller_info = create_controllers_info_dict()
 #                     'Controller Count Pin OUT': 3}}
 
 controller = Controller(controller_info)
+print(3333333333)
 
 def run_server():
     uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORT")))
