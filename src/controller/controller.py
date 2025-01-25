@@ -139,6 +139,7 @@ class Controller(metaclass=SingletonMeta):
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
                                         'Pin Type': [],
+                                        'Delay List': [],
                                         'Scenario': ''
                     }
         """
@@ -302,27 +303,40 @@ class Controller(metaclass=SingletonMeta):
         self.controller_info_extractor(controller_event)
         client_registers = self.controller_register_creator(controller_event)
         client = self.clients_list[self.controller_info_id]
-        for register in client_registers:
+        for idx , register in enumerate(client_registers):
             if controller_event['Scenario'] == 'Auto Alarm':
-                pass
+                auto_alarm_on_duration = controller_event['Delay List'][idx]
+                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                time.sleep(auto_alarm_on_duration)
+                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
+                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{auto_alarm_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Auto Caller':
-                pass
-
+                caller_on_duration = controller_event['Delay List'][idx]
+                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                time.sleep(caller_on_duration)
+                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
+                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{caller_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+    
             elif controller_event['Scenario'] == 'Auto Open':
-                pass
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Manual Alarm ON':
-                pass
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Manual Alarm OFF':
-                pass
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Manual Open':
-                pass
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Manual Close':
-                pass
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
+                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] == 'Relay ON':
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
