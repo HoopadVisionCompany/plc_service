@@ -12,9 +12,11 @@ class PinSchema(BaseModel):
     type: PinType = Field(default=PinType.pin_in)
     controller_id: str
     number: int = Field(ge=0, le=100)
+    delay: int = Field(ge=0 , default=0)
 
 
 class PinUpdateSchema(BaseModel):
     type: Union[PinType, None] = Field(default=PinType.pin_in)
     controller_id: Union[str, None] = None
     number: Union[int, None] = Field(ge=0, le=100)
+    delay: Union[int, None] = Field(ge=0 , default=0)

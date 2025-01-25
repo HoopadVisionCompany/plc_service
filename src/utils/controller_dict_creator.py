@@ -55,7 +55,7 @@ def create_controller_event_dict(task_id):
 
     pins = list(pin_collection.pin_collection.find(
         {"controller_id": task["controller_id"], "number": {"$in": task["pin_numbers"]}},
-        {'number': 1, "type": 1, "_id": 0}))
+        {'number': 1, "type": 1,"delay":1, "_id": 0}))
     # print("pins", pins)
 
     scenario = scenario_collection.detail(task["scenario_id"])
@@ -85,12 +85,16 @@ def create_controller_event_dict(task_id):
 
     pin_list = []
     pin_type = []
+    delay_list = []
     for pin in pins:
+        print(pins)
         pin_list.append(pin["number"])
         pin_type.append(pin["type"])
+        delay_list.append(pin["delay"])
     controller_event['Controller ID'] = controller['_id']
     controller_event['Pin List'] = pin_list
     controller_event['Pin Type'] = pin_type
+    controller_event['Delay List'] = delay_list
     controller_event['Scenario'] = scenario["name"]
     return controller_event
 

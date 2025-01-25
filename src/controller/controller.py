@@ -254,7 +254,7 @@ class Controller(metaclass=SingletonMeta):
             if self.controller_info_type == 'PLC Delta':
                 for pin in controller_event['Pin List']:
                     if self.controller_info_protocol == 'Ethernet':
-                        self.controller_info_pin = pin
+                        self.controller_info_pin = pin #.............................................................
                         registers_list.append(self.controller_info_pin + 2048)                           
                     elif self.controller_info_protocol == 'Serial':
                         self.controller_info_pin = pin
@@ -317,7 +317,7 @@ class Controller(metaclass=SingletonMeta):
                 time.sleep(caller_on_duration)
                 control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=False)
                 print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{caller_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
-    
+
             elif controller_event['Scenario'] == 'Auto Open':
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
@@ -443,7 +443,8 @@ if __name__ == '__main__':
         controller_event_1 = {'Controller ID':30,
                             'Pin List': [0, 1, 2],
                             'Pin Type': [],
-                            'Scenario': 'Relay OFF'
+                            'Delay List':[0.1, 0.2, 0.3],
+                            'Scenario': 'Auto Alarm'
         }
 
         events = [controller_event_1]
