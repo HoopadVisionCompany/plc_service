@@ -5,6 +5,7 @@ from threading import Thread
 from dotenv import load_dotenv
 import os
 import sys
+from src.controller.controller import Controller
 
 print(0)
 from src.controller_backend.router import router as controller_router
@@ -14,7 +15,7 @@ from src.scenario.router import router as scenario_router
 from src.utils.middlewares.exception_middlewares import ExceptionMiddleware
 from src.subscriber.redis_subscriber import subscriber_handler
 from src.scenario.initialize_scenario import initialize
-
+from src.utils.controller_dict_creator import create_controllers_info_dict
 print(00)
 
 load_dotenv()
@@ -43,6 +44,20 @@ app_gate.add_middleware(
     allow_headers=["*"],
 )
 
+controller_info = create_controllers_info_dict()
+# # temp controller_info (just for test):
+# controller_info = {
+#     'Delta PLC': {'Controller ID': 10,
+#                     'Controller Type': 'PLC Delta',
+#                     'Controller Protocol': 'Ethernet', 
+#                     'Controller IP': '192.168.10.5', 
+#                     'Controller Port': 502, 
+#                     'Controller Driver': None, 
+#                     'Controller Unit': 1, 
+#                     'Controller Count Pin IN': 8, 
+#                     'Controller Count Pin OUT': 3}}
+
+controller = Controller(controller_info)
 
 def run_server():
     uvicorn.run(app_gate, host=os.getenv("UVICORN_HOST"), port=int(os.getenv("UVICORN_PORT")))
@@ -59,11 +74,11 @@ def run_initialize_scenarios():
 
 def run_all():
     thread_run_server = Thread(target=run_server, args=())
-    # thread_subscriber = Thread(target=run_subscriber, args=())
+    thread_subscriber = Thread(target=run_subscriber, args=())
     thread_run_server.start()
-    # thread_subscriber.start()
+    thread_subscriber.start()
     thread_run_server.join()
-    # thread_subscriber.join()
+    thread_subscriber.join()
 
 
 def runner():
