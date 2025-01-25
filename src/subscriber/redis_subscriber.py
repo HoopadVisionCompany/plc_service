@@ -8,6 +8,7 @@ sys.path.append("../..")
 from src.database.db import RedisDbBuilder
 from src.task.service import TaskCollectionCreator
 from src.utils.controller_dict_creator import create_controller_event_dict
+from src.controller.controller import Controller
 
 task_collection = TaskCollectionCreator().create_collection()
 task_collection_cursor = task_collection.task_collection
@@ -20,6 +21,9 @@ def message_handler(message:List[AnyStr]):
     print(f"Received message: {message}, type : {type(message)}")
     controller_event_dict = create_controller_event_dict(message[0])
     print(controller_event_dict)
+    controller = Controller({})
+    print(controller)
+    controller.controller_action(controller_event_dict)
     # tasks = list(task_collection_cursor.find({"_id": {"$in": message}}))
     # print(tasks)
 
