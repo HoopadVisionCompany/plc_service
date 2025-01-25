@@ -10,6 +10,8 @@ from pymodbus.client import ModbusSerialClient
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 
+from dotenv import load_dotenv
+load_dotenv()
 
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
@@ -184,9 +186,9 @@ class Controller(metaclass=SingletonMeta):
             return None
 
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
-        max_retries = 1 # MUST ADDED TO .ENV
-        retry_delay = 0.1 # MUST ADDED TO .ENV
-        created = False #! Must be connected
+        max_retries = os.getenv('RETRIES_NUM')
+        retry_delay = os.getenv('RETRIES_DELAY')
+        connected = False
         name_counter = 0
         controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
@@ -198,7 +200,7 @@ class Controller(metaclass=SingletonMeta):
                 try:
                     if self.controller_client_type_selector(clients_protocol[controller_id], client):
                         print(f"Controller [{controller_name}] Client Connected")
-                        created = True
+                        connected = True
                         break
                     else:
                         print(f"Retrying to connect to controller [{controller_name}]... ({retries + 1}/{max_retries})")
@@ -209,7 +211,7 @@ class Controller(metaclass=SingletonMeta):
                     print(f"Exception: {e}")
                     retries += 1
                     time.sleep(retry_delay)
-            if created is False:
+            if connected is False:
                 print(f"Controller [{controller_name}] Client NOT connected after {max_retries} retries.")
             # t2 = datetime.now()
             # print(f"..........................elapsed time: {t2 - t1}")
@@ -229,9 +231,9 @@ class Controller(metaclass=SingletonMeta):
                 self.controller_info_cpo =  controller['Controller Count Pin OUT']
 
     def controller_client_connector(self, client):
-        max_retries = 1 # MUST ADDED TO .ENV
-        retry_delay = 0.1 # MUST ADDED TO .ENV
-        connected = False #! Must be connected
+        max_retries = os.getenv('RETRIES_NUM')
+        retry_delay = os.getenv('RETRIES_DELAY')
+        connected = False 
         retries = 0
         while retries < max_retries:
             try:
@@ -257,10 +259,8 @@ class Controller(metaclass=SingletonMeta):
             if self.controller_info_type == 'PLC Delta':
                 for pin in controller_event['Pin List']:
                     if self.controller_info_protocol == 'Ethernet':
-                        # self.controller_info_pin = pin #.............................................................
                         registers_list.append(pin + 2048)                           
                     elif self.controller_info_protocol == 'Serial':
-                        # self.controller_info_pin = pin
                         registers_list.append(pin + 2049)
             else:
                 print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
@@ -269,8 +269,8 @@ class Controller(metaclass=SingletonMeta):
         return registers_list
     
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
-        retries = 3     # MUST ADDED TO .ENV
-        delay = 0.25    # MUST ADDED TO .ENV
+        retries = os.getenv('RETRIES_NUM')
+        delay = os.getenv('RETRIES_DELAY')
         try:
             operation_completed = False
             for attempt in range(retries):
