@@ -1,14 +1,14 @@
 
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import time
 from datetime import datetime
 from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient
-from logger_controller import ControllerLogger
-from utils.patterns.singletons import SingletonMeta
+from src.controller.logger_controller import ControllerLogger
+from src.utils.patterns.singletons import SingletonMeta
 
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
@@ -323,7 +323,7 @@ class Controller(metaclass=SingletonMeta):
 
             elif controller_event['Scenario'] == 'Manual Close':
                 pass
-            
+
             elif controller_event['Scenario'] == 'Relay ON':
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, register=register, status=True)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
