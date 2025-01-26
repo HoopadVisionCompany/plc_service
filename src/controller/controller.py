@@ -186,8 +186,8 @@ class Controller(metaclass=SingletonMeta):
             return None
 
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
-        max_retries = os.getenv('RETRIES_NUM')
-        retry_delay = os.getenv('RETRIES_DELAY')
+        max_retries = int(os.getenv('RETRIES_NUM'))
+        retry_delay = float(os.getenv('RETRIES_DELAY'))
         connected = False
         name_counter = 0
         controller_names = list(controller_info.keys())
