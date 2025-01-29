@@ -186,8 +186,8 @@ class Controller(metaclass=SingletonMeta):
             return None
 
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
-        max_retries = int(os.getenv('RETRIES_NUM'))
-        retry_delay = float(os.getenv('RETRIES_DELAY'))
+        max_retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
+        retry_delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
         connected = False
         name_counter = 0
         controller_names = list(controller_info.keys())
@@ -231,8 +231,8 @@ class Controller(metaclass=SingletonMeta):
                 self.controller_info_cpo =  controller['Controller Count Pin OUT']
 
     def controller_client_connector(self, client):
-        max_retries = os.getenv('RETRIES_NUM')
-        retry_delay = os.getenv('RETRIES_DELAY')
+        max_retries = os.getenv('CONTROLLER_RETRIES_NUM')
+        retry_delay = os.getenv('CONTROLLER_RETRIES_DELAY')
         connected = False 
         retries = 0
         while retries < max_retries:
@@ -269,8 +269,8 @@ class Controller(metaclass=SingletonMeta):
         return registers_list
     
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
-        retries = os.getenv('RETRIES_NUM')
-        delay = os.getenv('RETRIES_DELAY')
+        retries = os.getenv('CONTROLLER_RETRIES_NUM')
+        delay = os.getenv('CONTROLLER_RETRIES_DELAY')
         try:
             operation_completed = False
             for attempt in range(retries):
@@ -302,10 +302,7 @@ class Controller(metaclass=SingletonMeta):
             print(f"Exception: {e}")
             return False # Must be modified
 
-    def controller_action(self, controller_event: dict):
-        self.controller_info_extractor(controller_event)
-        client_registers = self.controller_register_creator(controller_event)
-        client = self.clients_list[self.controller_info_id]
+    def controller_scenario(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
             if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
                 pin_on_duration = controller_event['Delay List'][idx]
@@ -324,6 +321,12 @@ class Controller(metaclass=SingletonMeta):
             
             else:
                 print(f"Scenario is not defined. Write its code 🙂")
+
+    def controller_action(self, controller_event: dict):
+        self.controller_info_extractor(controller_event)
+        client_registers = self.controller_register_creator(controller_event)
+        client = self.clients_list[self.controller_info_id]
+        self.controller_scenario(controller_event, client_registers, client)
 
 
 if __name__ == '__main__':
