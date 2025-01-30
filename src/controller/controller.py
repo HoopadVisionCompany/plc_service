@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 import time
 from datetime import datetime
 from pyModbusTCP.client import ModbusClient
-from pymodbus.client import ModbusSerialClient
+from pymodbus.client import ModbusSerialClient # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 
@@ -98,12 +98,12 @@ class Controller(metaclass=SingletonMeta):
                         Controller ID -> str : UUID4 (Mongodb)
                         Controller Type -> str : Fixed Names (PLC Delta, PLC Siemens, Micro-controller, Arduino, Raspberry Pi, Relay Module)
                         Controller Protocol -> str : Fixed Names (Ethernet, Serial)
-                        Controller IP -> str/NoneType : IP Address
-                        Controller Port -> int/NoneType : Port Address
-                        Controller Driver -> str/NoneType : Based on Serial Port Name ("/dev/ttyUSBx" on Ubuntu , 'COMx' on Windows)
-                        Controller Unit -> int/NoneType : Based on Clients Number (Clients IDs)
-                        Controller Count Pin IN -> int/NoneType : Number of Input Pins
-                        Controller Count Pin Out -> int/NoneType : Number of Output Pins
+                        Controller IP -> str | NoneType : IP Address
+                        Controller Port -> int | NoneType : Port Address
+                        Controller Driver -> str | NoneType : Based on Serial Port Name ("/dev/ttyUSBx" on Ubuntu , 'COMx' on Windows)
+                        Controller Unit -> int | NoneType : Based on Clients Number (Clients IDs)
+                        Controller Count Pin IN -> int | NoneType : Number of Input Pins
+                        Controller Count Pin Out -> int | NoneType : Number of Output Pins
 
                     Example:
                     controller_info = {
@@ -149,9 +149,9 @@ class Controller(metaclass=SingletonMeta):
 
                     Validation:
                         Controller ID -> str : UUID4 (Mongodb)
-                        Pin List -> list : List of int values (0, 1, ..., 999)
-                        Pin Type -> list : List of str values (Fixed Names: 'in' , 'out')
-                        Delay List -> list : list of float values (in 'second' metric)
+                        Pin List -> list : List[int] (0, 1, ..., 999)
+                        Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
+                        Delay List -> list : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
 
@@ -294,17 +294,17 @@ class Controller(metaclass=SingletonMeta):
                 if self.controller_info_protocol == 'Ethernet':
                     write_coil = client.write_single_coil(register, status)
                 elif self.controller_info_protocol == 'Serial':
-                    write_coil = client.write_coil(register, status, unit=1)
+                    write_coil = client.write_coil(register, status)
                 else:
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(register, client_unit)  # Read back the coil value to verify - What is 1 ?!
-                    if read_value is not None and read_value[0] == True:
+                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+                    if read_value == status: # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         print(f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
                         return True # Must be modified
-                    else:
+                    elif read_value == status:
                         print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
                 else:
