@@ -79,7 +79,7 @@ class Controller(metaclass=SingletonMeta):
 
                         
             Input Data Format (for the initialization of all kind of controllers):
-
+                --------------------------------------------------------------------------------------------------------------------
                 controller_info Dictionary Format:
                     controller_info = {
                                 'Controller Name': {'Controller ID': '',
@@ -136,8 +136,9 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Unit': None, 
                                               'Controller Count Pin IN': 0, 
                                               'Controller Count Pin OUT': 4}                                              
-                                }                   
+                                }          
 
+                --------------------------------------------------------------------------------------------------------------------
                 controller_event Dictionary Format:
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
@@ -146,7 +147,23 @@ class Controller(metaclass=SingletonMeta):
                                         'Scenario': ''
                     }
 
-                    Scenarios: 'Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF'
+                    Validation:
+                        Controller ID -> str : UUID4 (Mongodb)
+                        Pin List -> list : List of int values (0, 1, ..., 999)
+                        Pin Type -> list : List of str values (Fixed Names: 'in' , 'out')
+                        Delay List -> list : list of float values (in 'second' metric)
+                        Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
+                        
+
+                    Example:
+                        controller_event = {'Controller ID': 'gtht6577gjd88f',
+                                            'Pin List': [0,1,200],
+                                            'Pin Type': [],
+                                            'Delay List':[3,1.2,0.04],
+                                            'Scenario': 'Auto Alarm'}
+
+                        'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
+                        'Delay List':[3,1.2,0.04] -> delay (second) between ON and OFF state of 0, 1, and 200 pins respectively
         """
         # Initialize logger
         self.controller = ControllerLogger()
@@ -261,7 +278,7 @@ class Controller(metaclass=SingletonMeta):
                     if self.controller_info_protocol == 'Ethernet':
                         registers_list.append(pin + 2048)                           
                     elif self.controller_info_protocol == 'Serial':
-                        registers_list.append(pin + 2049)
+                        registers_list.append(pin + 2048)
             else:
                 print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
                 registers_list = None
@@ -433,9 +450,9 @@ if __name__ == '__main__':
                                     }
                                     
         controller_event_1 = {'Controller ID':30,
-                            'Pin List': [0,1,2,3],
+                            'Pin List': [0,10,100],
                             'Pin Type': [],
-                            'Delay List':[5,0,0,0],
+                            'Delay List':[1,1,1],
                             'Scenario': 'Auto Alarm'
         }
 
