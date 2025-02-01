@@ -1,15 +1,17 @@
-from fastapi import APIRouter, status, HTTPException,Depends
+from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from src.controller_backend.model import ControllerSchema, ControllerUpdateSchema
 from src.controller_backend.service import ControllerCollectionCreator
 from src.utils.auth.authorization import retrieve_user
+
 controller_factory = ControllerCollectionCreator()
 controller_collection = controller_factory.create_collection()
+from src.controller.controller import Controller
+from src.utils.controller_dict_creator import update_controllers_info_dict
 
 router = APIRouter(
     # dependencies=[Depends(retrieve_user),]
 )
-
 
 
 @router.get("/controller/list")
@@ -28,6 +30,11 @@ def detail_controller(id: str):
 def insert_controller(controller_data: ControllerSchema):
     data = controller_data.model_dump()
     controller_collection.insert(data)
+    # update controller info
+    print("befroe : ",Controller({}).controller_info)
+    controller_info=update_controllers_info_dict(data)
+    Controller({}).update_controller_info(controller_info)
+    print("after : ", Controller({}).controller_info)
     return JSONResponse(status_code=status.HTTP_200_OK, content="inserted successfully")
 
 
