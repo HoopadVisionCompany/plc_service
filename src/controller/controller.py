@@ -1,17 +1,19 @@
-
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import time
 from datetime import datetime
 from pyModbusTCP.client import ModbusClient
-from pymodbus.client import ModbusSerialClient # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
+from pymodbus.client import ModbusSerialClient  # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
@@ -181,11 +183,13 @@ class Controller(metaclass=SingletonMeta):
         for controller_name, controller in controller_info.items():
             if controller['Controller Type'] == 'PLC Delta':
                 if controller['Controller Protocol'] == 'Ethernet':
-                    client = ModbusClient(host=controller['Controller IP'], port=controller['Controller Port'], timeout=3, unit_id=controller['Controller Unit'])
+                    client = ModbusClient(host=controller['Controller IP'], port=controller['Controller Port'],
+                                          timeout=3, unit_id=controller['Controller Unit'])
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Ethernet'
                 elif controller['Controller Protocol'] == 'Serial':
-                    client = ModbusSerialClient(method="rtu", port=controller['Controller Driver'], stopbits=1, bytesize=8, parity="E", baudrate=9600, timeout=0.1)
+                    client = ModbusSerialClient(method="rtu", port=controller['Controller Driver'], stopbits=1,
+                                                bytesize=8, parity="E", baudrate=9600, timeout=0.1)
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Serial'
             else:
@@ -236,21 +240,21 @@ class Controller(metaclass=SingletonMeta):
     def controller_info_extractor(self, controller_event: dict):
         for controller_name, controller in self.controller_info.items():
             if controller['Controller ID'] == controller_event['Controller ID']:
-                self.controller_info_name =  controller_name
-                self.controller_info_id =  controller['Controller ID']
-                self.controller_info_type =  controller['Controller Type']
-                self.controller_info_protocol=  controller['Controller Protocol']
-                self.controller_info_ip =  controller['Controller IP']
-                self.controller_info_port =  controller['Controller Port']
-                self.controller_info_driver =  controller['Controller Driver']
-                self.controller_info_unit =  controller['Controller Unit']
-                self.controller_info_cpi =  controller['Controller Count Pin IN']
-                self.controller_info_cpo =  controller['Controller Count Pin OUT']
+                self.controller_info_name = controller_name
+                self.controller_info_id = controller['Controller ID']
+                self.controller_info_type = controller['Controller Type']
+                self.controller_info_protocol = controller['Controller Protocol']
+                self.controller_info_ip = controller['Controller IP']
+                self.controller_info_port = controller['Controller Port']
+                self.controller_info_driver = controller['Controller Driver']
+                self.controller_info_unit = controller['Controller Unit']
+                self.controller_info_cpi = controller['Controller Count Pin IN']
+                self.controller_info_cpo = controller['Controller Count Pin OUT']
 
     def controller_client_connector(self, client):
         max_retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         retry_delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
-        connected = False 
+        connected = False
         retries = 0
         while retries < max_retries:
             try:
@@ -259,11 +263,13 @@ class Controller(metaclass=SingletonMeta):
                     connected = True
                     break
                 else:
-                    print(f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
+                    print(
+                        f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
                     retries += 1
                     time.sleep(retry_delay)
             except Exception as e:
-                print(f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
+                print(
+                    f"Retrying to connect to controller [{self.controller_info_name}]... ({retries + 1}/{max_retries})")
                 print(f"Exception: {e}")
                 retries += 1
                 time.sleep(retry_delay)
@@ -276,15 +282,16 @@ class Controller(metaclass=SingletonMeta):
             if self.controller_info_type == 'PLC Delta':
                 for pin in controller_event['Pin List']:
                     if self.controller_info_protocol == 'Ethernet':
-                        registers_list.append(pin + 2048)                           
+                        registers_list.append(pin + 2048)
                     elif self.controller_info_protocol == 'Serial':
                         registers_list.append(pin + 2048)
             else:
-                print(f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
+                print(
+                    f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
-    
+
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
@@ -299,43 +306,59 @@ class Controller(metaclass=SingletonMeta):
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
-                    if read_value == status: # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
+                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[
+                        0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+                    if read_value == status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
-                        print(f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
-                        return True # Must be modified
+                        print(
+                            f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
+                        return True  # Must be modified
                     elif read_value == status:
-                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
+                        print(
+                            f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
                 else:
-                        print(f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
-                        self.controller_client_connector(client)
+                    print(
+                        f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
+                    self.controller_client_connector(client)
             if operation_completed is False:
-                print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
-                return False # Must be modified
+                print(
+                    f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
+                return False  # Must be modified
         except Exception as e:
             # pass
-            print(f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")         
+            print(
+                f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
             print(f"Exception: {e}")
-            return False # Must be modified
+            return False  # Must be modified
 
     def controller_scenario(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
             if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
                 pin_on_duration = controller_event['Delay List'][idx]
-                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=True)
+                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
+                                                                   pin=controller_event['Pin List'][idx],
+                                                                   register=register, status=True)
                 time.sleep(pin_on_duration)
-                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=False)
-                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit,
+                                                                    client=client,
+                                                                    pin=controller_event['Pin List'][idx],
+                                                                    register=register, status=False)
+                print(
+                    f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=True)
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
+                                                                pin=controller_event['Pin List'][idx],
+                                                                register=register, status=True)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client, pin=controller_event['Pin List'][idx], register=register, status=False)
+                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
+                                                                pin=controller_event['Pin List'][idx],
+                                                                register=register, status=False)
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
-            
+
             else:
                 print(f"Scenario is not defined. Write its code 🙂")
 
@@ -345,72 +368,78 @@ class Controller(metaclass=SingletonMeta):
         client = self.clients_list[self.controller_info_id]
         self.controller_scenario(controller_event, client_registers, client)
 
+    def update_controller_info(self, data: dict):
+        controller_name = data["name"]
+        del data["name"]
+        self.controller_info[controller_name] = data
+        print("i guess i updated the controller info", self.controller_info)
+
 
 if __name__ == '__main__':
     test_type = 2
     if test_type == 1:
         controller_info = {
-                    'Delta PLC': {'Controller ID': 10,
-                                    'Controller Type': 'PLC Delta',
-                                    'Controller Protocol': 'Ethernet', 
-                                    'Controller IP': '192.168.10.5', 
-                                    'Controller Port': 502, 
-                                    'Controller Driver': None, 
-                                    'Controller Unit': 1, 
-                                    'Controller Count Pin IN': 8, 
-                                    'Controller Count Pin OUT': 3},
+            'Delta PLC': {'Controller ID': 10,
+                          'Controller Type': 'PLC Delta',
+                          'Controller Protocol': 'Ethernet',
+                          'Controller IP': '192.168.10.5',
+                          'Controller Port': 502,
+                          'Controller Driver': None,
+                          'Controller Unit': 1,
+                          'Controller Count Pin IN': 8,
+                          'Controller Count Pin OUT': 3},
 
-                        'bluepill': {'Controller ID': 20,
-                                    'Controller Type': 'Micro-controller',
-                                    'Controller Protocol': 'Serial', 
-                                    'Controller IP': None, 
-                                    'Controller Port': None, 
-                                    'Controller Driver': "/dev/ttyUSB0", 
-                                    'Controller Unit': 2, 
-                                    'Controller Count Pin IN': 10, 
-                                    'Controller Count Pin OUT': 10},
+            'bluepill': {'Controller ID': 20,
+                         'Controller Type': 'Micro-controller',
+                         'Controller Protocol': 'Serial',
+                         'Controller IP': None,
+                         'Controller Port': None,
+                         'Controller Driver': "/dev/ttyUSB0",
+                         'Controller Unit': 2,
+                         'Controller Count Pin IN': 10,
+                         'Controller Count Pin OUT': 10},
 
-                    'PLC دلتا': {'Controller ID': 30,
-                                    'Controller Type': 'PLC Delta',
-                                    'Controller Protocol': 'Serial', 
-                                    'Controller IP': None, 
-                                    'Controller Port': None, 
-                                    'Controller Driver': "/dev/ttyUSB0", 
-                                    'Controller Unit': 1, 
-                                    'Controller Count Pin IN': 8, 
-                                    'Controller Count Pin OUT': 2},
+            'PLC دلتا': {'Controller ID': 30,
+                         'Controller Type': 'PLC Delta',
+                         'Controller Protocol': 'Serial',
+                         'Controller IP': None,
+                         'Controller Port': None,
+                         'Controller Driver': "/dev/ttyUSB0",
+                         'Controller Unit': 1,
+                         'Controller Count Pin IN': 8,
+                         'Controller Count Pin OUT': 2},
 
-                    'ماژول رله': {'Controller ID': 40,
-                                    'Controller Type': 'Relay Module',
-                                    'Controller Protocol': 'Ethernet', 
-                                    'Controller IP': '192.168.1.16', 
-                                    'Controller Port': 8080, 
-                                    'Controller Driver': None, 
-                                    'Controller Unit': None, 
-                                    'Controller Count Pin IN': 0, 
-                                    'Controller Count Pin OUT': 4}                                              
-                    }
-        
-        controller_event_1 = {'Controller ID':10,
-                            'Pin List': [0, 1, 2],
-                            'Pin Type': [],
-                            'Scenario': ''
-        }    
-
-        controller_event_2 = {'Controller ID':20,
-                            'Pin List': [0, 1],
-                            'Pin Type': [],
-                            'Scenario': ''
-        }  
-
-        controller_event_3 = {'Controller ID':30,
-                            'Pin List': [0, 1],
-                            'Pin Type': [],
-                            'Scenario': ''
+            'ماژول رله': {'Controller ID': 40,
+                          'Controller Type': 'Relay Module',
+                          'Controller Protocol': 'Ethernet',
+                          'Controller IP': '192.168.1.16',
+                          'Controller Port': 8080,
+                          'Controller Driver': None,
+                          'Controller Unit': None,
+                          'Controller Count Pin IN': 0,
+                          'Controller Count Pin OUT': 4}
         }
 
+        controller_event_1 = {'Controller ID': 10,
+                              'Pin List': [0, 1, 2],
+                              'Pin Type': [],
+                              'Scenario': ''
+                              }
+
+        controller_event_2 = {'Controller ID': 20,
+                              'Pin List': [0, 1],
+                              'Pin Type': [],
+                              'Scenario': ''
+                              }
+
+        controller_event_3 = {'Controller ID': 30,
+                              'Pin List': [0, 1],
+                              'Pin Type': [],
+                              'Scenario': ''
+                              }
+
         events = [controller_event_1, controller_event_2, controller_event_3]
-        
+
         controller = Controller(controller_info)
         for event in events:
             controller.controller_register_creator(controller_info, event)
@@ -438,30 +467,30 @@ if __name__ == '__main__':
         #                             'Controller Count Pin OUT': 4}                                    
         #                             }
         controller_info = {
-                    'PLC دلتا': {'Controller ID': 30,
-                                    'Controller Type': 'PLC Delta',
-                                    'Controller Protocol': 'Serial', 
-                                    'Controller IP': None, 
-                                    'Controller Port': None, 
-                                    'Controller Driver': "/dev/ttyUSB0", 
-                                    'Controller Unit': 1, 
-                                    'Controller Count Pin IN': 8, 
-                                    'Controller Count Pin OUT': 4}                                    
-                                    }
-                                    
-        controller_event_1 = {'Controller ID':30,
-                            'Pin List': [0,10,100],
-                            'Pin Type': [],
-                            'Delay List':[1,1,1],
-                            'Scenario': 'Auto Alarm'
+            'PLC دلتا': {'Controller ID': 30,
+                         'Controller Type': 'PLC Delta',
+                         'Controller Protocol': 'Serial',
+                         'Controller IP': None,
+                         'Controller Port': None,
+                         'Controller Driver': "/dev/ttyUSB0",
+                         'Controller Unit': 1,
+                         'Controller Count Pin IN': 8,
+                         'Controller Count Pin OUT': 4}
         }
 
-        controller_event_2 = {'Controller ID':10,
-                            'Pin List': [10, 20, 30],
-                            'Pin Type': [],
-                            'Delay List':[100, 200, 300],
-                            'Scenario': 'Relay OFF'
-        }
+        controller_event_1 = {'Controller ID': 30,
+                              'Pin List': [0, 10, 100],
+                              'Pin Type': [],
+                              'Delay List': [1, 1, 1],
+                              'Scenario': 'Auto Alarm'
+                              }
+
+        controller_event_2 = {'Controller ID': 10,
+                              'Pin List': [10, 20, 30],
+                              'Pin Type': [],
+                              'Delay List': [100, 200, 300],
+                              'Scenario': 'Relay OFF'
+                              }
 
         events = [controller_event_1]
         controller = Controller(controller_info)
