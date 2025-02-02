@@ -8,7 +8,9 @@ from src.utils.auth.authorization import retrieve_user
 task_factory = TaskCollectionCreator()
 task_collection = task_factory.create_collection()
 
-router = APIRouter(dependencies=[Depends(retrieve_user), ])
+router = APIRouter(
+    # dependencies=[Depends(retrieve_user), ]
+)
 
 
 @router.get("/task/list")

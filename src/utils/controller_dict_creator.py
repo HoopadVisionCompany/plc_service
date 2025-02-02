@@ -55,7 +55,7 @@ def create_controller_event_dict(task_id):
 
     pins = list(pin_collection.pin_collection.find(
         {"controller_id": task["controller_id"], "number": {"$in": task["pin_numbers"]}},
-        {'number': 1, "type": 1, "_id": 0}))
+        {'number': 1, "type": 1, "delay": 1, "_id": 0}))
     # print("pins", pins)
 
     scenario = scenario_collection.detail(task["scenario_id"])
@@ -85,14 +85,37 @@ def create_controller_event_dict(task_id):
 
     pin_list = []
     pin_type = []
+    delay_list = []
     for pin in pins:
+        print(pins)
         pin_list.append(pin["number"])
         pin_type.append(pin["type"])
+        delay_list.append(pin["delay"])
     controller_event['Controller ID'] = controller['_id']
     controller_event['Pin List'] = pin_list
     controller_event['Pin Type'] = pin_type
+    controller_event['Delay List'] = delay_list
     controller_event['Scenario'] = scenario["name"]
     return controller_event
 
+
 # a = create_controller_event_dict("ddb14f3a-7aba-478b-be99-23b7b96cd729")
 # print(a)
+
+
+def update_controllers_info_dict(data: dict):
+    controller_info = {}
+    if 'driver' not in data.keys():
+        data['driver'] = None
+    controller_info["name"] = data["name"]
+    controller_info["Controller ID"] = data["_id"]
+    controller_info["Controller Type"] = data['type']
+    controller_info["Controller Protocol"] = data['protocol']
+    controller_info["Controller IP"] = data['ip']
+    controller_info["Controller Port"] = data['port']
+    controller_info["Controller Driver"] = data['driver']
+    controller_info["Controller Unit"] = data['controller_unit']
+    controller_info["Controller Count Pin IN"] = data['count_pin_in']
+    controller_info["Controller Count Pin OUT"] = data['count_pin_out']
+
+    return controller_info
