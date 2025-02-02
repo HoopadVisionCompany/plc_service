@@ -13,9 +13,10 @@ class ControllerCollection(DbBuilder, CollectionInterface):
         print("Creating ControllerCollection...")
         self.controller_collection = self.db['controller_collection']
         self.controller_collection.create_index("name", unique=True)
-        self.controller_collection.create_index("controller_unit", unique=True)
+        # self.controller_collection.create_index("controller_unit", unique=True)
         self.controller_collection.create_index("port", unique=True)
-        print("controllerCollection created with unique index on 'name','controller_unit','port'")
+        # print("controllerCollection created with unique index on 'name','controller_unit','port'")
+        print("controllerCollection created with unique index on 'name','port'")
 
     def get_collection(self) -> Any:
         return self.controller_collection
