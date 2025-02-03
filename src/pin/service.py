@@ -24,17 +24,19 @@ class PinCollection(DbBuilder, CollectionInterface):
     def get_collection(self) -> Any:
         return self.pin_collection
 
-    def insert(self, data: Dict[str, Any]) -> None:
+    def insert(self, data: Dict[str, Any]) -> Dict[str, Any]:
         _ = self.controller_exists(data["controller_id"])
         data = self.id_creator(data)
         self.pin_collection.insert_one(data)
         print("inserted pin")
+        return data
 
-    def update(self, update_data: Dict[str, Any], pk: str) -> None:
+    def update(self, update_data: Dict[str, Any], pk: str) -> Dict[str, Any]:
         _ = self.detail(pk)
         _ = self.controller_exists(update_data["controller_id"])
         self.pin_collection.update_one({"_id": pk}, {"$set": update_data})
         print("updated pin")
+        return self.detail(pk)
 
     def delete(self, pk: str) -> None:
         _ = self.detail(pk)

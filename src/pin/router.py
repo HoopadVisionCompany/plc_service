@@ -27,15 +27,15 @@ def detail_pin(id: str):
 @router.post("/pin/insert")
 def insert_pin(pin_data: PinSchema):
     data = pin_data.model_dump()
-    pin_collection.insert(data)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="inserted successfully")
+    result = pin_collection.insert(data)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.patch("/pin/update/{id}")
 def update_pin(pin_data: PinUpdateSchema, id: str):
     update_data = pin_data.model_dump(exclude_none=True)
-    pin_collection.update(update_data, id)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="updated successfully")
+    result = pin_collection.update(update_data, id)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.delete("/pin/delete/{id}")
