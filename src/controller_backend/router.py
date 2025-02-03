@@ -1,13 +1,13 @@
 from fastapi import APIRouter, status, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from src.controller_backend.model import ControllerSchema, ControllerUpdateSchema
 from src.controller_backend.service import ControllerCollectionCreator
+from src.controller_backend.controller_utils import update_controller_info_insert, update_controller_info_update, \
+    update_controller_info_delete
 from src.utils.auth.authorization import retrieve_user
 
 controller_factory = ControllerCollectionCreator()
 controller_collection = controller_factory.create_collection()
-from src.controller.controller import Controller
-from src.utils.controller_dict_creator import update_controllers_info_dict
 
 router = APIRouter(
     # dependencies=[Depends(retrieve_user),]
@@ -29,23 +29,25 @@ def detail_controller(id: str):
 @router.post("/controller/insert")
 def insert_controller(controller_data: ControllerSchema):
     data = controller_data.model_dump()
-    controller_collection.insert(data)
+    result = controller_collection.insert(data)
     # update controller info
-    print("befroe : ",Controller({}).controller_info)
-    controller_info=update_controllers_info_dict(data)
-    Controller({}).update_controller_info(controller_info)
-    print("after : ", Controller({}).controller_info)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="inserted successfully")
+    update_controller_info_insert(data)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.patch("/controller/update/{id}")
 def update_controller(controller_data: ControllerUpdateSchema, id: str):
     update_data = controller_data.model_dump(exclude_none=True)
-    controller_collection.update(update_data, id)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="updated successfully")
+    data_before_update = controller_collection.detail(id)
+    result = controller_collection.update(update_data, id)
+    data_after_update = controller_collection.detail(id)
+    update_controller_info_update(data_before_update, data_after_update)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.delete("/controller/delete/{id}")
 def delete_controller(id: str):
+    data = controller_collection.detail(id)
+    update_controller_info_delete(data)
     controller_collection.delete(id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content="deleted successfully")
+    return Response(status_code=status.HTTP_204_NO_CONTENT, content="deleted successfully")
