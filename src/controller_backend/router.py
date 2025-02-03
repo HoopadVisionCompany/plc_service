@@ -29,20 +29,20 @@ def detail_controller(id: str):
 @router.post("/controller/insert")
 def insert_controller(controller_data: ControllerSchema):
     data = controller_data.model_dump()
-    controller_collection.insert(data)
+    result = controller_collection.insert(data)
     # update controller info
     update_controller_info_insert(data)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="inserted successfully")
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.patch("/controller/update/{id}")
 def update_controller(controller_data: ControllerUpdateSchema, id: str):
     update_data = controller_data.model_dump(exclude_none=True)
     data_before_update = controller_collection.detail(id)
-    controller_collection.update(update_data, id)
+    result = controller_collection.update(update_data, id)
     data_after_update = controller_collection.detail(id)
     update_controller_info_update(data_before_update, data_after_update)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="updated successfully")
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
 @router.delete("/controller/delete/{id}")

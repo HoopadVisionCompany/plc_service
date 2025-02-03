@@ -21,18 +21,20 @@ class ControllerCollection(DbBuilder, CollectionInterface):
     def get_collection(self) -> Any:
         return self.controller_collection
 
-    def insert(self, data: Dict[str, Any]) -> None:
+    def insert(self, data: Dict[str, Any]) -> Dict[str, Any]:
         data = self.id_creator(data)
         self.controller_collection.insert_one(data)
         print("inserted controller_backend")
+        return data
 
-    def update(self, update_data: Dict[str, Any], pk: str) -> None:
+    def update(self, update_data: Dict[str, Any], pk: str) -> Dict[str, Any]:
         data = self.detail(pk)
         if "count_pin_in" in update_data.keys() and "count_pin_out" in update_data.keys() and update_data[
             "count_pin_out"] + update_data["count_pin_in"] > data["count_total_pin"]:
             raise ValueError("exceeded the total number of pins")
         self.controller_collection.update_one({"_id": pk}, {"$set": update_data})
         print("updated controller_backend")
+        return self.detail(pk)
 
     def delete(self, pk: str) -> None:
         _ = self.detail(pk)
