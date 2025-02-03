@@ -18,18 +18,20 @@ class SettingCollection(DbBuilder, CollectionInterface):
     def get_collection(self) -> Any:
         return self.setting_collection
 
-    def insert(self, data: Dict[str, Any]) -> None:
+    def insert(self, data: Dict[str, Any]) -> Dict[str, Any]:
         data = self.id_creator(data)
         self.setting_collection.insert_one(data)
         print("inserted setting")
+        return data
 
-    def update(self, update_data: Dict[str, Any], pk: str) -> None:
+    def update(self, update_data: Dict[str, Any], pk: str) -> Dict[str, Any]:
         data = self.detail(pk)
         # if "package_id" in data.keys():
         #     if not package_is_exist(data['package_id']):
         #         raise CustomException404("this package is not exist")
         self.setting_collection.update_one({"_id": pk}, {"$set": update_data})
         print("updated setting")
+        return self.detail(pk)
 
     def delete(self, pk: str) -> None:
         _ = self.detail(pk)
