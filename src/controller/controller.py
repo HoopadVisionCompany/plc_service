@@ -145,6 +145,7 @@ class Controller(metaclass=SingletonMeta):
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
                                         'Pin Type': [],
+                                        'Pin ID': [],
                                         'Delay List': [],
                                         'Scenario': ''
                     }
@@ -152,6 +153,7 @@ class Controller(metaclass=SingletonMeta):
                     Validation:
                         Controller ID -> str : UUID4 (Mongodb)
                         Pin List -> list : List[int] (0, 1, ..., 999)
+                        Pin ID -> list : UUID4 (Mongodb)
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
                         Delay List -> list : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
@@ -160,6 +162,7 @@ class Controller(metaclass=SingletonMeta):
                     Example:
                         controller_event = {'Controller ID': 'gtht6577gjd88f',
                                             'Pin List': [0,1,200],
+                                            'Pin ID': ['dasfgdeg', 'f324f4f', 'hgh6h6h'],
                                             'Pin Type': [],
                                             'Delay List':[3,1.2,0.04],
                                             'Scenario': 'Auto Alarm'}
@@ -346,8 +349,7 @@ class Controller(metaclass=SingletonMeta):
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[
-                        0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
                     if read_value == status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         print(
