@@ -9,11 +9,13 @@ from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient  # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
-
+from src.pin.service import PinCollectionCreator
 from dotenv import load_dotenv
 
 load_dotenv()
 
+pin_factory = PinCollectionCreator()
+pin_collection = pin_factory.create_collection()
 
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
@@ -294,7 +296,7 @@ class Controller(metaclass=SingletonMeta):
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
-
+        
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
         def XOR(A, B):
@@ -333,8 +335,11 @@ class Controller(metaclass=SingletonMeta):
             button_dual_reset = write_status or read_status
             button_dual_set = NOT(button_dual_reset)
 
-        return button_single, button_dual_set, button_dual_reset
+        return {"button_single":button_single, "button_dual_set":button_dual_set, "button_dual_reset":button_dual_reset}
 
+    def controller_button_to_db(self, button_states, pin_id):
+        result = pin_collection.update(button_states, pin_id)
+        
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
