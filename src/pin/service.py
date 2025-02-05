@@ -65,6 +65,11 @@ class PinCollection(DbBuilder, CollectionInterface):
         data = list(controller_collection.detail(controller_id))
         return data
 
+    def update_badge(self, update_data: Dict[str, Any], pk: str) -> Dict[str, Any]:
+        _ = self.detail(pk)
+        self.pin_collection.update_one({"_id": pk}, {"$set": update_data})
+        print("updated pin")
+        return self.detail(pk)
 
 class PinCollectionCreator(CollectionFactoryInterface):
     def create_collection(self) -> PinCollection:

@@ -323,11 +323,11 @@ class Controller(metaclass=SingletonMeta):
         elif scenario in ['Manual Alarm ON', 'Relay ON']:
             button_single = write_status and read_status
         elif scenario in ['Manual Alarm OFF', 'Relay OFF']:
-            button_single = NOR(write_status, read_status) 
+            button_single = NOR(write_status, read_status)
         elif scenario in ['Auto Gate']:
             button_dual_set = write_status and read_status
             button_dual_reset = NOT(button_dual_set)
-            # Think about auto close!
+            ##! Think about auto close!
         elif scenario in ['Manual Gate Open']:
             button_dual_set = write_status and read_status
             button_dual_reset = NOT(button_dual_set)
@@ -338,44 +338,44 @@ class Controller(metaclass=SingletonMeta):
         return {"button_single":button_single, "button_dual_set":button_dual_set, "button_dual_reset":button_dual_reset}
 
     def controller_button_to_db(self, button_states, pin_id):
-        result = pin_collection.update(button_states, pin_id)
-        
-    def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
+        result = pin_collection.update_badge(button_states, pin_id)
+
+    def controller_output_control(self, client_unit: int, client, pin: int, register: int, write_status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
         try:
             operation_completed = False
             for attempt in range(retries):
                 if self.controller_info_protocol == 'Ethernet':
-                    write_coil = client.write_single_coil(register, status)
+                    write_coil = client.write_single_coil(register, write_status)
                 elif self.controller_info_protocol == 'Serial':
-                    write_coil = client.write_coil(register, status)
+                    write_coil = client.write_coil(register, write_status)
                 else:
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
                     read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
-                    if read_value == status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
+                    if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         print(
-                            f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
+                            f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]")
                         return True  # Must be modified
-                    elif read_value == status:
+                    elif read_value == write_status:
                         print(
-                            f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
+                            f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
                 else:
                     print(
-                        f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
+                        f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
                     self.controller_client_connector(client)
             if operation_completed is False:
                 print(
-                    f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
+                    f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]")
                 return False  # Must be modified
         except Exception as e:
             # pass
             print(
-                f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
+                f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]")
             print(f"Exception: {e}")
             return False  # Must be modified
 
@@ -385,25 +385,35 @@ class Controller(metaclass=SingletonMeta):
                 pin_on_duration = controller_event['Delay List'][idx]
                 control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                    pin=controller_event['Pin List'][idx],
-                                                                   register=register, status=True)
-                time.sleep(pin_on_duration)
+                                                                   register=register, write_status=True)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
+
+                ##! Must used in thread or programmed on controller -----------------------------------------------------
+                time.sleep(pin_on_duration) 
                 control_result_off = self.controller_output_control(client_unit=self.controller_info_unit,
                                                                     client=client,
                                                                     pin=controller_event['Pin List'][idx],
-                                                                    register=register, status=False)
-                print(
-                    f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+                                                                    register=register, write_status=False)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result_off)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
+                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+                ##!--------------------------------------------------------------------------------------------------------
 
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
                                                                 register=register, status=True)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
                                                                 register=register, status=False)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             else:
