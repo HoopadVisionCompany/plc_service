@@ -292,6 +292,46 @@ class Controller(metaclass=SingletonMeta):
         print(f'{registers_list=}')
         return registers_list
 
+    def controller_button_state(self, scenario, write_status, read_status):
+        # Function to simulate XOR Gate
+        def XOR(A, B):
+            return A ^ B
+
+        # Function to simulate NOT Gate
+        def NOT(A):
+            return not A
+
+        # Function to simulate XNOR Gate
+        def XNOR(A, B):
+            return NOT(XOR(A, B))
+
+        # Function to simulate NOR Gate
+        def NOR(A, B):
+            return NOT(A or B)
+
+        button_single = None
+        button_dual_set= None
+        button_dual_reset = None
+
+        if scenario in ['Auto Alarm', 'Auto Caller']:
+            button_single = XNOR(write_status, read_status) 
+        elif scenario in ['Manual Alarm ON', 'Relay ON']:
+            button_single = write_status and read_status
+        elif scenario in ['Manual Alarm OFF', 'Relay OFF']:
+            button_single = NOR(write_status, read_status) 
+        elif scenario in ['Auto Gate']:
+            button_dual_set = write_status and read_status
+            button_dual_reset = NOT(button_dual_set)
+            # Think about auto close!
+        elif scenario in ['Manual Gate Open']:
+            button_dual_set = write_status and read_status
+            button_dual_reset = NOT(button_dual_set)
+        elif scenario in ['Manual Gate Close']:
+            button_dual_reset = write_status or read_status
+            button_dual_set = NOT(button_dual_reset)
+
+        return button_single, button_dual_set, button_dual_reset
+
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
