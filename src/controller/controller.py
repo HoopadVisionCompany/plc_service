@@ -339,6 +339,8 @@ class Controller(metaclass=SingletonMeta):
 
     def controller_button_to_db(self, button_states, pin_id):
         result = pin_collection.update_badge(button_states, pin_id)
+        print(f"update_badge result is: [{result}]")
+        print(f"‌Button States of pin [{pin_id}] is: [{button_states}]")
 
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, write_status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
@@ -387,6 +389,7 @@ class Controller(metaclass=SingletonMeta):
                                                                    pin=controller_event['Pin List'][idx],
                                                                    register=register, write_status=True)
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
+                print(f"Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario")
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
 
                 ##! Must used in thread or programmed on controller -----------------------------------------------------
@@ -403,7 +406,7 @@ class Controller(metaclass=SingletonMeta):
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
-                                                                register=register, status=True)
+                                                                register=register, write_status=True)
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
@@ -411,7 +414,7 @@ class Controller(metaclass=SingletonMeta):
             elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
-                                                                register=register, status=False)
+                                                                register=register, write_status=False)
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
@@ -537,13 +540,15 @@ if __name__ == '__main__':
 
         controller_event_1 = {'Controller ID': 30,
                               'Pin List': [0, 10, 100],
+                              'Pin ID': ['ID0', 'ID10', 'ID100'],
                               'Pin Type': [],
                               'Delay List': [1, 1, 1],
-                              'Scenario': 'Auto Alarm'
+                              'Scenario': 'Manual Alarm ON'
                               }
 
         controller_event_2 = {'Controller ID': 10,
                               'Pin List': [10, 20, 30],
+                              'Pin ID': ['ID10', 'ID20', 'ID30'],
                               'Pin Type': [],
                               'Delay List': [100, 200, 300],
                               'Scenario': 'Relay OFF'
