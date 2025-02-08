@@ -26,7 +26,7 @@ class TaskCollection(DbBuilder, CollectionInterface):
     def create_collection(self) -> None:
         print("Creating TaskCollection...")
         self.task_collection = self.db['task_collection']
-        self.task_collection.create_index([("controller_id", 1), ("pin_numbers", 1)], unique=True)
+        # self.task_collection.create_index([("controller_id", 1), ("pin_numbers", 1)], unique=True)
 
         print("TaskCollection created with unique index on 'controller_id' and 'pin_numbers'")
 

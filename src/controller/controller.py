@@ -9,11 +9,13 @@ from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient  # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
-
+from src.pin.service import PinCollectionCreator
 from dotenv import load_dotenv
 
 load_dotenv()
 
+pin_factory = PinCollectionCreator()
+pin_collection = pin_factory.create_collection()
 
 class Controller(metaclass=SingletonMeta):
     def __init__(self, controller_info):
@@ -145,6 +147,7 @@ class Controller(metaclass=SingletonMeta):
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
                                         'Pin Type': [],
+                                        'Pin ID': [],
                                         'Delay List': [],
                                         'Scenario': ''
                     }
@@ -152,6 +155,7 @@ class Controller(metaclass=SingletonMeta):
                     Validation:
                         Controller ID -> str : UUID4 (Mongodb)
                         Pin List -> list : List[int] (0, 1, ..., 999)
+                        Pin ID -> list : UUID4 (Mongodb)
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
                         Delay List -> list : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
@@ -160,6 +164,7 @@ class Controller(metaclass=SingletonMeta):
                     Example:
                         controller_event = {'Controller ID': 'gtht6577gjd88f',
                                             'Pin List': [0,1,200],
+                                            'Pin ID': ['dasfgdeg', 'f324f4f', 'hgh6h6h'],
                                             'Pin Type': [],
                                             'Delay List':[3,1.2,0.04],
                                             'Scenario': 'Auto Alarm'}
@@ -291,44 +296,88 @@ class Controller(metaclass=SingletonMeta):
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
+        
+    def controller_button_state(self, scenario, write_status, read_status):
+        # Function to simulate XOR Gate
+        def XOR(A, B):
+            return A ^ B
 
-    def controller_output_control(self, client_unit: int, client, pin: int, register: int, status: bool):
+        # Function to simulate NOT Gate
+        def NOT(A):
+            return not A
+
+        # Function to simulate XNOR Gate
+        def XNOR(A, B):
+            return NOT(XOR(A, B))
+
+        # Function to simulate NOR Gate
+        def NOR(A, B):
+            return NOT(A or B)
+
+        button_single = None
+        button_dual_set= None
+        button_dual_reset = None
+
+        if scenario in ['Auto Alarm', 'Auto Caller']:
+            button_single = XNOR(write_status, read_status) 
+        elif scenario in ['Manual Alarm ON', 'Relay ON']:
+            button_single = write_status and read_status
+        elif scenario in ['Manual Alarm OFF', 'Relay OFF']:
+            button_single = NOR(write_status, read_status)
+        elif scenario in ['Auto Gate']:
+            button_dual_set = write_status and read_status
+            button_dual_reset = NOT(button_dual_set)
+            ##! Think about auto close!
+        elif scenario in ['Manual Gate Open']:
+            button_dual_set = write_status and read_status
+            button_dual_reset = NOT(button_dual_set)
+        elif scenario in ['Manual Gate Close']:
+            button_dual_reset = write_status or read_status
+            button_dual_set = NOT(button_dual_reset)
+
+        return {"button_single":button_single, "button_dual_set":button_dual_set, "button_dual_reset":button_dual_reset}
+
+    def controller_button_to_db(self, button_states, pin_id):
+        result = pin_collection.update_badge(button_states, pin_id)
+        print(f"update_badge result is: [{result}]")
+        print(f"‌Button States of pin [{pin_id}] is: [{button_states}]")
+
+    def controller_output_control(self, client_unit: int, client, pin: int, register: int, write_status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
         try:
             operation_completed = False
             for attempt in range(retries):
                 if self.controller_info_protocol == 'Ethernet':
-                    write_coil = client.write_single_coil(register, status)
+                    write_coil = client.write_single_coil(register, write_status)
                 elif self.controller_info_protocol == 'Serial':
-                    write_coil = client.write_coil(register, status)
+                    write_coil = client.write_coil(register, write_status)
                 else:
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[
-                        0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
-                    if read_value == status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
+                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+                    if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         print(
-                            f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{status}]")
+                            f"[✔] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]")
                         return True  # Must be modified
-                    elif read_value == status:
+                    elif read_value == write_status:
                         print(
-                            f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
+                            f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})")
                         self.controller_client_connector(client)
                 else:
                     print(
-                        f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
+                        f"[...] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([write_coil] Attempt {attempt + 1}/{retries})")
                     self.controller_client_connector(client)
             if operation_completed is False:
                 print(
-                    f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
+                    f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]")
                 return False  # Must be modified
         except Exception as e:
             # pass
             print(
-                f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{status}]")
+                f"[✘] Controller [{self.controller_info_name}] -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]")
             print(f"Exception: {e}")
             return False  # Must be modified
 
@@ -338,25 +387,36 @@ class Controller(metaclass=SingletonMeta):
                 pin_on_duration = controller_event['Delay List'][idx]
                 control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                    pin=controller_event['Pin List'][idx],
-                                                                   register=register, status=True)
-                time.sleep(pin_on_duration)
+                                                                   register=register, write_status=True)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
+                print(f"Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario")
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
+
+                ##! Must used in thread or programmed on controller -----------------------------------------------------
+                time.sleep(pin_on_duration) 
                 control_result_off = self.controller_output_control(client_unit=self.controller_info_unit,
                                                                     client=client,
                                                                     pin=controller_event['Pin List'][idx],
-                                                                    register=register, status=False)
-                print(
-                    f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+                                                                    register=register, write_status=False)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result_off)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
+                print(f"Output Control Result [ON] is [{control_result_on}] and [OFF] is [{control_result_off}] after [{pin_on_duration}] delay for [{controller_event['Scenario']}] Scenario")
+                ##!--------------------------------------------------------------------------------------------------------
 
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
-                                                                register=register, status=True)
+                                                                register=register, write_status=True)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
                 control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
-                                                                register=register, status=False)
+                                                                register=register, write_status=False)
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx])
                 print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             else:
@@ -480,13 +540,15 @@ if __name__ == '__main__':
 
         controller_event_1 = {'Controller ID': 30,
                               'Pin List': [0, 10, 100],
+                              'Pin ID': ['ID0', 'ID10', 'ID100'],
                               'Pin Type': [],
                               'Delay List': [1, 1, 1],
-                              'Scenario': 'Auto Alarm'
+                              'Scenario': 'Manual Alarm ON'
                               }
 
         controller_event_2 = {'Controller ID': 10,
                               'Pin List': [10, 20, 30],
+                              'Pin ID': ['ID10', 'ID20', 'ID30'],
                               'Pin Type': [],
                               'Delay List': [100, 200, 300],
                               'Scenario': 'Relay OFF'
