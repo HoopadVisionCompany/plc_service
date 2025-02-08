@@ -12,6 +12,7 @@ def publish(value):
     r.publish(channel_name, value)
     print(f"send data {value} to redis")
 
-
-# publish("d7be635c-994f-4db0-89f1-908906b8515a")
-publish("f4eab1c2-fbd4-49c5-adb1-e4c9182c316d")
+tasks_id = ["f4eab1c2-fbd4-49c5-adb1-e4c9182c316d", "f4eab1c2-fbd4-49c5-adb1-e4c9182c316e"]
+for scenario in tasks_id:
+    # publish("d7be635c-994f-4db0-89f1-908906b8515a")
+    publish(scenario)
