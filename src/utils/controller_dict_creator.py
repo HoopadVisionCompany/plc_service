@@ -25,6 +25,10 @@ def create_controllers_info_dict():
     controller_info = {}
     controllers = controller_collection.retrieve()
     for controller in controllers:
+        pin_numbers = []
+        pins = list(pin_collection.pin_collection.find({"controller_id": controller["_id"]}))
+        for pin in pins:
+            pin_numbers.append(pin["number"])
         if 'driver' not in controller.keys():
             controller['driver'] = None
         controller_info[controller['name']] = {
@@ -36,7 +40,8 @@ def create_controllers_info_dict():
             "Controller Driver": controller['driver'],
             "Controller Unit": controller['controller_unit'],
             "Controller Count Pin IN": controller['count_pin_in'],
-            "Controller Count Pin OUT": controller['count_pin_out']
+            "Controller Count Pin OUT": controller['count_pin_out'],
+            "Controller Pins": pin_numbers,
         }
 
     return controller_info
@@ -107,9 +112,17 @@ def create_controller_event_dict(task_id):
 
 
 def update_controllers_info_dict(data: dict):
+    pins = list(pin_collection.pin_collection.find({"controller_id": data["_id"]}))
+    pin_numbers = []
     controller_info = {}
     if 'driver' not in data.keys():
         data['driver'] = None
+    if 'ip' not in data.keys():
+        data['ip'] = None
+    if 'port' not in data.keys():
+        data['port'] = None
+    for pin in pins:
+        pin_numbers.append(pin["number"])
     controller_info["name"] = data["name"]
     controller_info["Controller ID"] = data["_id"]
     controller_info["Controller Type"] = data['type']
@@ -120,5 +133,6 @@ def update_controllers_info_dict(data: dict):
     controller_info["Controller Unit"] = data['controller_unit']
     controller_info["Controller Count Pin IN"] = data['count_pin_in']
     controller_info["Controller Count Pin OUT"] = data['count_pin_out']
+    controller_info["Controller Pins"] = pin_numbers
 
     return controller_info
