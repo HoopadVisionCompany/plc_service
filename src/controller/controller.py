@@ -1,5 +1,6 @@
 import sys
 import os
+import threading
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -18,8 +19,7 @@ pin_factory = PinCollectionCreator()
 pin_collection = pin_factory.create_collection()
 
 class Controller(metaclass=SingletonMeta):
-    def __init__(self, controller_info):
-        """
+    """
         Controller Docs (Autor: Mohammadreza Asadi G.)
 
             Delta PLCs Controller (Ubuntu Installation Guide):
@@ -172,15 +172,24 @@ class Controller(metaclass=SingletonMeta):
                         'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
                         'Delay List':[3,1.2,0.04] -> delay (second) between ON and OFF state of 0, 1, and 200 pins respectively
         """
+    def __init__(self, controller_info):
+
         # Initialize logger
         self.controller = ControllerLogger()
 
         # Log the initialization
         self.controller.logger.info("................Controller initialized................")
-
         self.controller_info = controller_info
-        self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
-        self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
+
+        self.lock = threading.Lock()        
+        self.thread_controller_clients_definition = threading.Thread(target=self.controller_clients_definition, args=(controller_info,), daemon=True)
+        self.thread_controller_clients_definition.start()
+        # self.thread_controller_clients_definition.join()
+
+    def controller_clients_definition(self, controller_info):
+        with self.lock:
+            self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
+            self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
 
     def controller_clients_creator(self, controller_info: dict):
         clients_list = {}
