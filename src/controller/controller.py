@@ -94,7 +94,8 @@ class Controller(metaclass=SingletonMeta):
                                                     'Controller Driver':'', 
                                                     'Controller Unit':'', 
                                                     'Controller Count Pin IN':'', 
-                                                    'Controller Count Pin OUT':''}                                              
+                                                    'Controller Count Pin OUT':'',
+                                                    'Controller Pins:[]}                                              
                                 }
 
                     Validation:
@@ -108,6 +109,7 @@ class Controller(metaclass=SingletonMeta):
                         Controller Unit -> int | NoneType : Based on Clients Number (Clients IDs)
                         Controller Count Pin IN -> int | NoneType : Number of Input Pins
                         Controller Count Pin Out -> int | NoneType : Number of Output Pins
+                        Controller Pins -> list : List of Controller Pins
 
                     Example:
                     controller_info = {
@@ -119,7 +121,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': None, 
                                               'Controller Unit': 1, 
                                               'Controller Count Pin IN': 8, 
-                                              'Controller Count Pin OUT': 4},
+                                              'Controller Count Pin OUT': 4,
+                                              'Controller Pins:[1,2]},
 
                                  'bluepill': {'Controller ID': 'gtht6577gjd88f',
                                               'Controller Type': 'ARM Micro-controller',
@@ -129,7 +132,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': "/dev/ttyUSB0", 
                                               'Controller Unit': 2, 
                                               'Controller Count Pin IN': 10, 
-                                              'Controller Count Pin OUT': 10},
+                                              'Controller Count Pin OUT': 10,
+                                              'Controller Pins:[10,20,30]},
 
                                 'ماژول رله': {'Controller ID': 'pjho090909jkkd',
                                               'Controller Type': 'Relay Module',
@@ -139,7 +143,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': None, 
                                               'Controller Unit': None, 
                                               'Controller Count Pin IN': 0, 
-                                              'Controller Count Pin OUT': 4}                                              
+                                              'Controller Count Pin OUT': 4,
+                                              'Controller Pins:[4]}                                              
                                 }          
 
                 --------------------------------------------------------------------------------------------------------------------
@@ -305,6 +310,9 @@ class Controller(metaclass=SingletonMeta):
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
+
+    def controller_register_monitor(self):
+        pass
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
