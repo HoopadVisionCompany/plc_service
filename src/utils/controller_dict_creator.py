@@ -31,6 +31,10 @@ def create_controllers_info_dict():
             pin_numbers.append(pin["number"])
         if 'driver' not in controller.keys():
             controller['driver'] = None
+        if 'protocol' not in controller.keys():
+            controller['protocol'] = None
+        if 'ip' not in controller.keys():
+            controller['ip'] = None
         controller_info[controller['name']] = {
             "Controller ID": controller["_id"],
             "Controller Type": controller['type'],
@@ -67,26 +71,6 @@ def create_controller_event_dict(task_id):
     # print("scenario", scenario)
     if 'driver' not in controller.keys():
         controller['driver'] = None
-    # controller_event[controller['name']] = {
-    #     "Controller ID": controller["_id"],
-    #     "Controller Type": controller['type'],
-    #     "Controller Protocol": controller['protocol'],
-    #     "Controller IP": controller['ip'],
-    #     "Controller Port": controller['port'],
-    #     "Controller Driver": controller['driver'],
-    #     "Controller Unit": controller['controller_unit'],
-    #     "Controller Count Pin IN": controller['count_pin_in'],
-    #     "Controller Count Pin OUT": controller['count_pin_out']
-    # }
-    # controller_event[controller['name']] = [controller["_id"], controller['type'], controller['protocol'],
-    #                                         controller['ip'], controller['port'], controller['driver'],
-    #                                         controller['controller_unit'], controller['count_pin_in'],
-    #                                         controller['count_pin_out']]
-    # controller_event_1 = {'Controller ID': 30,
-    #                       'Pin List': [0, 1, 2],
-    #                       'Pin Type': [],
-    #                       'Scenario': 'Relay OFF'
-    #                       }
 
     pin_list = []
     pin_id = []
@@ -144,7 +128,11 @@ def create_scenario_pin_dict():
     for task in tasks:
         try:
             scenario = scenario_collection.detail(task["scenario_id"])
+            controller = controller_collection.detail(task["controller_id"])
             pins = list(pin_collection.pin_collection.find({"controller_id": task["controller_id"]}))
+            for pin in pins:
+                pin["controller_unit"] = controller["controller_unit"]
+
             if len(pins) != 0:
                 result[scenario["name"]] = pins
         except Exception as e:
@@ -153,3 +141,23 @@ def create_scenario_pin_dict():
 
 
 print(create_scenario_pin_dict())
+
+
+def convert_action_to_event_dict(action_data):
+    controller_event = {}
+    controller = controller_collection.detail(action_data["controller_id"])
+
+    scenario = scenario_collection.detail(action_data["scenario_id"])
+
+    controller_event['Controller ID'] = controller['_id']
+    controller_event['Controller Unit'] = controller['controller_unit']
+
+    controller_event['Pin List'] = [action_data["number"]]
+
+    controller_event['Pin ID'] = action_data["pin_id"]
+
+    controller_event['Pin Type'] = action_data["type"]
+    controller_event['Delay List'] = [action_data["delay"]]
+    controller_event['Scenario'] = scenario["name"]
+
+    return controller_event

@@ -1,13 +1,13 @@
 import os
 import json
 import sys
-from typing import List,AnyStr
+from typing import List, AnyStr
 from dotenv import load_dotenv
 
 sys.path.append("../..")
 from src.database.db import RedisDbBuilder
 from src.task.service import TaskCollectionCreator
-from src.utils.controller_dict_creator import create_controller_event_dict
+from src.utils.controller_dict_creator import create_controller_event_dict, convert_action_to_event_dict
 from src.controller.controller import Controller
 
 task_collection = TaskCollectionCreator().create_collection()
@@ -17,9 +17,18 @@ load_dotenv()
 channel_name = os.getenv('REDIS_CHANNEL_NAME')
 
 
-def message_handler(message:List[AnyStr]):
+def message_handler(message: List[AnyStr]):
+    message = json.loads(message)
     print(f"Received message: {message}, type : {type(message)}")
-    controller_event_dict = create_controller_event_dict(message)
+    if message["type"] == "action":
+        print(f"Received action: {message}")
+        controller_event_dict = convert_action_to_event_dict(message["data"])
+    elif message["type"] == "event":
+        print(f"Received event: {message}")
+        controller_event_dict = convert_action_to_event_dict(message["data"]["task_id"])
+    else:
+        raise Exception("Invalid message type")
+
     print(controller_event_dict)
     controller = Controller({})
     print(controller)
