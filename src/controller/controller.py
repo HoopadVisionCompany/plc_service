@@ -10,6 +10,7 @@ from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient  # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
+from src.utils.controller_dict_creator import create_scenario_pin_dict
 from src.pin.service import PinCollectionCreator
 from dotenv import load_dotenv
 
@@ -148,6 +149,13 @@ class Controller(metaclass=SingletonMeta):
                                 }          
 
                 --------------------------------------------------------------------------------------------------------------------
+
+                scenarios_info = {'Scenario 1': [{pin_info 1},{pin_info 2},...],
+                                  'Scenario 2': [{pin_info 1},{pin_info 2},...],
+                                   ...
+                                  'Scenario N': [{pin_info 1},{pin_info 2},...]}                      
+
+                --------------------------------------------------------------------------------------------------------------------
                 controller_event Dictionary Format:
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
@@ -186,10 +194,15 @@ class Controller(metaclass=SingletonMeta):
         self.controller.logger.info("................Controller initialized................")
         self.controller_info = controller_info
 
+        scenarios_info = create_scenario_pin_dict()
+
         self.lock = threading.Lock()        
         self.thread_controller_clients_definition = threading.Thread(target=self.controller_clients_definition, args=(controller_info,), daemon=True)
         self.thread_controller_clients_definition.start()
-        # self.thread_controller_clients_definition.join()
+
+        self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
+        self.thread_controller_state_monitor.start()
+        
 
     def controller_clients_definition(self, controller_info):
         with self.lock:
@@ -295,24 +308,55 @@ class Controller(metaclass=SingletonMeta):
         if connected is False:
             print(f"Controller [{self.controller_info_name}] Client NOT connected after {max_retries} retries.")
 
-    def controller_register_creator(self, controller_event: dict):
-        registers_list = []
-        if self.controller_info_id == controller_event['Controller ID']:
-            if self.controller_info_type == 'PLC Delta':
-                for pin in controller_event['Pin List']:
-                    if self.controller_info_protocol == 'Ethernet':
-                        registers_list.append(pin + 2048)
-                    elif self.controller_info_protocol == 'Serial':
-                        registers_list.append(pin + 2048)
-            else:
-                print(
-                    f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
-                registers_list = None
-        print(f'{registers_list=}')
-        return registers_list
+    def controller_register_creator(self, controller_event={}, pin=0, create_from_controller_event=True):
+        if create_from_controller_event:
+            registers_list = []
+            if self.controller_info_id == controller_event['Controller ID']:
+                if self.controller_info_type == 'PLC Delta':
+                    for pin in controller_event['Pin List']:
+                        if self.controller_info_protocol == 'Ethernet':
+                            registers_list.append(pin + 2048) ##! Must be tested using an Ethernet PLC
+                        elif self.controller_info_protocol == 'Serial':
+                            registers_list.append(pin + 2048)
+                else:
+                    print(
+                        f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
+                    registers_list = None
+            print(f'{registers_list=}')
+            return registers_list
+        else:
+            return pin + 2048
 
-    def controller_register_monitor(self):
-        pass
+    def controller_state_monitor(self, scenarios_info: dict):
+            scenarios_info_temp = scenarios_info
+            for pin_info_list in scenarios_info_temp.values():
+                for pin_info in pin_info_list:
+                    register = self.controller_register_creator(pin=pin_info['number'], create_from_controller_event=False)
+                    state = self.controller_register_read_value(client=self.clients_list[pin_info['controller_id']], register=register, client_unit=pin_info['controller_unit'])
+                    pin_info['previous_state'] = state
+                    pin_info['register'] = register
+                    pin_info['client'] = self.clients_list[pin_info['controller_id']]
+
+            while True:
+                try:
+                    with self.lock:
+                        for scenario, pin_info_list in scenarios_info_temp.items():
+                                for pin_info in pin_info_list:
+                                    current_state = self.controller_register_read_value(client=pin_info['client'], register=pin_info['register'], client_unit=pin_info['controller_unit'])
+                                    if current_state != pin_info['previous_state']:
+                                        # if scenario in ['Auto Alarm', 'Auto Caller']: ##! Temporary Commented
+                                        if True: #! Temporary 
+                                            pin_info['button_single'] = current_state
+                                            pin_info['previous_state'] = current_state
+                                        else:
+                                            pass ##! Other Scenarios Must Be Implemented
+                                        current_pin_buttons_state = {'button_single':pin_info['button_single'],
+                                                                    'button_dual_set':pin_info['button_dual_set'],
+                                                                    'button_dual_reset':pin_info['button_dual_reset']}
+                                        self.controller_button_to_db(button_states=current_pin_buttons_state, pin_id=pin_info['_id'])
+                                        print(f"Scenario is {scenario} , the pins are {pin_info}, and the button states are {current_pin_buttons_state}")
+                except:
+                    pass
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
@@ -332,7 +376,7 @@ class Controller(metaclass=SingletonMeta):
             return NOT(A or B)
 
         button_single = None
-        button_dual_set= None
+        button_dual_set = None
         button_dual_reset = None
 
         if scenario in ['Auto Alarm', 'Auto Caller']:
@@ -359,6 +403,13 @@ class Controller(metaclass=SingletonMeta):
         print(f"update_badge result is: [{result}]")
         print(f"‌Button States of pin [{pin_id}] is: [{button_states}]")
 
+    def controller_register_read_value(self, client, register: int, client_unit: int):
+        try:
+            value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+        except:
+            value = None
+        return value
+    
     def controller_output_control(self, client_unit: int, client, pin: int, register: int, write_status: bool):
         retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
@@ -373,7 +424,7 @@ class Controller(metaclass=SingletonMeta):
                     return None
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
-                    read_value = client.read_coils(address=register, count=1, slave=client_unit).bits[0]  # see mixin.py in the site-packages: /home/hoopad/.HBOX/plc_service/venv/lib/python3.8/site-packages/pymodbus/client/mixin.py
+                    read_value = self.controller_register_read_value(client=client, register=register, client_unit=client_unit)
                     if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         print(
@@ -453,7 +504,12 @@ class Controller(metaclass=SingletonMeta):
 
 
 if __name__ == '__main__':
-    test_type = 2
+    test_type = 3
+    # def stop_process():
+    #     import signal
+    #     print("Stopping process...")
+    #     os.kill(os.getpid(), signal.SIGTERM)
+
     if test_type == 1:
         controller_info = {
             'Delta PLC': {'Controller ID': 10,
@@ -575,3 +631,52 @@ if __name__ == '__main__':
         controller = Controller(controller_info)
         for event in events:
             controller.controller_action(event)
+
+    elif test_type == 3:
+        controller_info = {
+            'PLC دلتا': {'Controller ID': "5d86a0b8-d789-4637-9c61-86617afe6808",
+                         'Controller Type': 'PLC Delta',
+                         'Controller Protocol': 'Serial',
+                         'Controller IP': None,
+                         'Controller Port': None,
+                         'Controller Driver': "/dev/ttyUSB0",
+                         'Controller Unit': 1,
+                         'Controller Count Pin IN': 8,
+                         'Controller Count Pin OUT': 4}
+        }
+        controller = Controller(controller_info)
+        scenarios_info = {'Auto Alarm': [{
+                                            "_id": "5e572805-a061-4ac9-8e32-2d6f43bcac8c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 0,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            },
+                                            {
+                                            "_id": "aef3c624-37ba-456f-98b3-3d3e9e2a0ac4",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 10,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }],
+                          'Auto Gate': [{
+                                            "_id": "d0616f63-b321-48d7-bb5a-6744d865f44c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 100,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }]}     
+        controller.controller_state_monitor(scenarios_info)
+        # stop_process()
