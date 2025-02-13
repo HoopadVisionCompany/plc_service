@@ -148,6 +148,13 @@ class Controller(metaclass=SingletonMeta):
                                 }          
 
                 --------------------------------------------------------------------------------------------------------------------
+
+                scenarios_info = {'Scenario 1': [{pin_info 1},{pin_info 2},...],
+                                  'Scenario 2': [{pin_info 1},{pin_info 2},...],
+                                   ...
+                                  'Scenario N': [{pin_info 1},{pin_info 2},...]}                      
+
+                --------------------------------------------------------------------------------------------------------------------
                 controller_event Dictionary Format:
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
@@ -301,7 +308,7 @@ class Controller(metaclass=SingletonMeta):
             if self.controller_info_type == 'PLC Delta':
                 for pin in controller_event['Pin List']:
                     if self.controller_info_protocol == 'Ethernet':
-                        registers_list.append(pin + 2048)
+                        registers_list.append(pin + 2048) ##! Must be tested using an Ethernet PLC
                     elif self.controller_info_protocol == 'Serial':
                         registers_list.append(pin + 2048)
             else:
@@ -311,7 +318,7 @@ class Controller(metaclass=SingletonMeta):
         print(f'{registers_list=}')
         return registers_list
 
-    def controller_register_monitor(self):
+    def controller_state_monitor(self, scenarios_info: dict):
         pass
         
     def controller_button_state(self, scenario, write_status, read_status):
@@ -332,7 +339,7 @@ class Controller(metaclass=SingletonMeta):
             return NOT(A or B)
 
         button_single = None
-        button_dual_set= None
+        button_dual_set = None
         button_dual_reset = None
 
         if scenario in ['Auto Alarm', 'Auto Caller']:
