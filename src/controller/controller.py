@@ -10,6 +10,7 @@ from pyModbusTCP.client import ModbusClient
 from pymodbus.client import ModbusSerialClient  # Docs: https://pymodbus.readthedocs.io/en/v3.6.9/index.html
 from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
+from src.utils.controller_dict_creator import create_scenario_pin_dict
 from src.pin.service import PinCollectionCreator
 from dotenv import load_dotenv
 
@@ -193,10 +194,15 @@ class Controller(metaclass=SingletonMeta):
         self.controller.logger.info("................Controller initialized................")
         self.controller_info = controller_info
 
+        scenarios_info = create_scenario_pin_dict()
+        
         self.lock = threading.Lock()        
         self.thread_controller_clients_definition = threading.Thread(target=self.controller_clients_definition, args=(controller_info,), daemon=True)
         self.thread_controller_clients_definition.start()
-        # self.thread_controller_clients_definition.join()
+
+        self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
+        self.thread_controller_state_monitor.start()
+        # self.thread_controller_clients_definition.join()controller_state_monitor
 
     def controller_clients_definition(self, controller_info):
         with self.lock:
