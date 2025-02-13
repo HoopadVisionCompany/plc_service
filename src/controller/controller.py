@@ -1,5 +1,6 @@
 import sys
 import os
+import threading
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -18,8 +19,7 @@ pin_factory = PinCollectionCreator()
 pin_collection = pin_factory.create_collection()
 
 class Controller(metaclass=SingletonMeta):
-    def __init__(self, controller_info):
-        """
+    """
         Controller Docs (Autor: Mohammadreza Asadi G.)
 
             Delta PLCs Controller (Ubuntu Installation Guide):
@@ -94,7 +94,8 @@ class Controller(metaclass=SingletonMeta):
                                                     'Controller Driver':'', 
                                                     'Controller Unit':'', 
                                                     'Controller Count Pin IN':'', 
-                                                    'Controller Count Pin OUT':''}                                              
+                                                    'Controller Count Pin OUT':'',
+                                                    'Controller Pins:[]}                                              
                                 }
 
                     Validation:
@@ -108,6 +109,7 @@ class Controller(metaclass=SingletonMeta):
                         Controller Unit -> int | NoneType : Based on Clients Number (Clients IDs)
                         Controller Count Pin IN -> int | NoneType : Number of Input Pins
                         Controller Count Pin Out -> int | NoneType : Number of Output Pins
+                        Controller Pins -> list : List of Controller Pins
 
                     Example:
                     controller_info = {
@@ -119,7 +121,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': None, 
                                               'Controller Unit': 1, 
                                               'Controller Count Pin IN': 8, 
-                                              'Controller Count Pin OUT': 4},
+                                              'Controller Count Pin OUT': 4,
+                                              'Controller Pins:[1,2]},
 
                                  'bluepill': {'Controller ID': 'gtht6577gjd88f',
                                               'Controller Type': 'ARM Micro-controller',
@@ -129,7 +132,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': "/dev/ttyUSB0", 
                                               'Controller Unit': 2, 
                                               'Controller Count Pin IN': 10, 
-                                              'Controller Count Pin OUT': 10},
+                                              'Controller Count Pin OUT': 10,
+                                              'Controller Pins:[10,20,30]},
 
                                 'ماژول رله': {'Controller ID': 'pjho090909jkkd',
                                               'Controller Type': 'Relay Module',
@@ -139,7 +143,8 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Driver': None, 
                                               'Controller Unit': None, 
                                               'Controller Count Pin IN': 0, 
-                                              'Controller Count Pin OUT': 4}                                              
+                                              'Controller Count Pin OUT': 4,
+                                              'Controller Pins:[4]}                                              
                                 }          
 
                 --------------------------------------------------------------------------------------------------------------------
@@ -172,15 +177,24 @@ class Controller(metaclass=SingletonMeta):
                         'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
                         'Delay List':[3,1.2,0.04] -> delay (second) between ON and OFF state of 0, 1, and 200 pins respectively
         """
+    def __init__(self, controller_info):
+
         # Initialize logger
         self.controller = ControllerLogger()
 
         # Log the initialization
         self.controller.logger.info("................Controller initialized................")
-
         self.controller_info = controller_info
-        self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
-        self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
+
+        self.lock = threading.Lock()        
+        self.thread_controller_clients_definition = threading.Thread(target=self.controller_clients_definition, args=(controller_info,), daemon=True)
+        self.thread_controller_clients_definition.start()
+        # self.thread_controller_clients_definition.join()
+
+    def controller_clients_definition(self, controller_info):
+        with self.lock:
+            self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
+            self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
 
     def controller_clients_creator(self, controller_info: dict):
         clients_list = {}
@@ -296,6 +310,9 @@ class Controller(metaclass=SingletonMeta):
                 registers_list = None
         print(f'{registers_list=}')
         return registers_list
+
+    def controller_register_monitor(self):
+        pass
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
