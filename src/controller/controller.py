@@ -200,8 +200,8 @@ class Controller(metaclass=SingletonMeta):
         self.thread_controller_clients_definition = threading.Thread(target=self.controller_clients_definition, args=(controller_info,), daemon=True)
         self.thread_controller_clients_definition.start()
 
-        ##! self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
-        ##! self.thread_controller_state_monitor.start()
+        self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
+        self.thread_controller_state_monitor.start()
         
 
     def controller_clients_definition(self, controller_info):
@@ -333,20 +333,30 @@ class Controller(metaclass=SingletonMeta):
                 for pin_info in pin_info_list:
                     register = self.controller_register_creator(pin=pin_info['number'], create_from_controller_event=False)
                     state = self.controller_register_read_value(client=self.clients_list[pin_info['controller_id']], register=register, client_unit=pin_info['controller_unit'])
-                    pin_info['current_state'] = state
-                    
-        ##! while True:
-            try:
-                with self.lock:
-                    for scenario, pin_info_list in scenarios_info_temp.items():
-                        if scenario in ['Auto Alarm', 'Auto Caller']:
-                            for pin_info in pin_info_list:
-                                current_pin_buttons_state = {"button_single":pin_info["button_single"],
-                                                            "button_dual_set":pin_info["button_dual_set"],
-                                                            "button_dual_reset":pin_info["button_dual_reset"]}
-                                print(f"Scenario is {scenario} , the pins are {pin_info}, and the button states are {current_pin_buttons_state}")
-            except:
-                pass
+                    pin_info['previous_state'] = state
+                    pin_info['register'] = register
+                    pin_info['client'] = self.clients_list[pin_info['controller_id']]
+
+            while True:
+                try:
+                    with self.lock:
+                        for scenario, pin_info_list in scenarios_info_temp.items():
+                                for pin_info in pin_info_list:
+                                    current_state = self.controller_register_read_value(client=pin_info['client'], register=pin_info['register'], client_unit=pin_info['controller_unit'])
+                                    if current_state != pin_info['previous_state']:
+                                        # if scenario in ['Auto Alarm', 'Auto Caller']: ##! Temporary Commented
+                                        if True: #! Temporary 
+                                            pin_info['button_single'] = current_state
+                                            pin_info['previous_state'] = current_state
+                                        else:
+                                            pass ##! Other Scenarios Must Be Implemented
+                                        current_pin_buttons_state = {'button_single':pin_info['button_single'],
+                                                                    'button_dual_set':pin_info['button_dual_set'],
+                                                                    'button_dual_reset':pin_info['button_dual_reset']}
+                                        self.controller_button_to_db(button_states=current_pin_buttons_state, pin_id=pin_info['_id'])
+                                        print(f"Scenario is {scenario} , the pins are {pin_info}, and the button states are {current_pin_buttons_state}")
+                except:
+                    pass
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
