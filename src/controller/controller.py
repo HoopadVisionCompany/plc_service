@@ -319,7 +319,13 @@ class Controller(metaclass=SingletonMeta):
         return registers_list
 
     def controller_state_monitor(self, scenarios_info: dict):
-        pass
+        while True:
+            try:
+                with self.lock:
+                    for scenario in scenarios_info:
+                        print(f"Scenario is {scenario}")
+            except:
+                pass
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
@@ -582,3 +588,47 @@ if __name__ == '__main__':
         controller = Controller(controller_info)
         for event in events:
             controller.controller_action(event)
+
+    elif test_type == 3:
+        controller_info = {
+            'PLC دلتا': {'Controller ID': 30,
+                         'Controller Type': 'PLC Delta',
+                         'Controller Protocol': 'Serial',
+                         'Controller IP': None,
+                         'Controller Port': None,
+                         'Controller Driver': "/dev/ttyUSB0",
+                         'Controller Unit': 1,
+                         'Controller Count Pin IN': 8,
+                         'Controller Count Pin OUT': 4}
+        }
+        controller = Controller(controller_info)
+        scenarios_info = {'Auto Alarm': [{
+                                            "_id": "5e572805-a061-4ac9-8e32-2d6f43bcac8c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "number": 0,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            },
+                                            {
+                                            "_id": "aef3c624-37ba-456f-98b3-3d3e9e2a0ac4",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "number": 10,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }],
+                          'Auto Gate': [{
+                                            "_id": "d0616f63-b321-48d7-bb5a-6744d865f44c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "number": 100,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }]}     
