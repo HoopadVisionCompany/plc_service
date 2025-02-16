@@ -25,7 +25,7 @@ def message_handler(message: List[AnyStr]):
         controller_event_dict = convert_action_to_event_dict(message["data"])
     elif message["type"] == "event":
         print(f"Received event: {message}")
-        controller_event_dict = convert_action_to_event_dict(message["data"]["task_id"])
+        controller_event_dict = create_controller_event_dict(message["data"]["task_id"])
     else:
         raise Exception("Invalid message type")
 
