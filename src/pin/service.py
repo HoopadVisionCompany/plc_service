@@ -52,7 +52,8 @@ class PinCollection(DbBuilder, CollectionInterface):
         print("deleted pin")
 
     def filter(self, filter_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
-        pass
+        data = list(self.pin_collection.aggregate([{"$match": filter_dict}]))
+        return data
 
     def retrieve(self) -> List[Dict[str, Any]]:
         data = list(self.pin_collection.find())
