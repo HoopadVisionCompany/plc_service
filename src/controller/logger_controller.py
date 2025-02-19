@@ -5,7 +5,7 @@ class ControllerLogger():
     def __init__(self):            
         # Configure the first logger
         self.logger = logging.getLogger('controller_log')
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
 
         # Create a file handler for the first logger
         file_handler = logging.FileHandler(os.getenv("CONTROLLER_LOG_ADDRESS"))
@@ -14,10 +14,10 @@ class ControllerLogger():
         self.logger.addHandler(file_handler)
 
         try:
-            print("______________Controller Log Started_____________")
-            log_message = f"______________Controller Log Started_____________"
-            self.logger.info(log_message)
+            log_message = f"____________________________Controller Log Started___________________________"
+            self.logger.debug(log_message)
+            print(log_message)
         except Exception as e:
             log_message = f"Controller Logging Exception -> {e}"
             self.logger.error(log_message)
-            print(f"Controller Logging Exception -> {e}")
+            print(log_message)
