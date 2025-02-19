@@ -13,6 +13,7 @@ from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 from src.utils.controller_dict_creator import create_scenario_pin_dict
 from src.pin.service import PinCollectionCreator
+from src.subscriber.rabbitmq_publisher import rabbitmq_publisher
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -212,6 +213,10 @@ class Controller(metaclass=SingletonMeta):
             log_message = f"Exception in Controllers and Scenarios Logging: {e}"
             self.controller_logger.logger.error(log_message)
             print(log_message)
+
+    def controller_clients_heartbeat(self):
+        "rabbitmq_publisher()" #! rabbitmq_publisher()
+        pass
 
     def controller_clients_definition(self, controller_info):
         with self.lock:
