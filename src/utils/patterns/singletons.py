@@ -21,3 +21,7 @@ class SingletonMeta(ABCMeta):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
+
+    def __init__(self,*args):
+        if not hasattr(self, "_initialized"):
+            self._initialized = True

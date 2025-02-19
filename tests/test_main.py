@@ -20,19 +20,19 @@
 #     TestCustomException404Exception()
 #     TestCustomException500Exception()
 #
-#     # plc collection
+#     # controller_backend collection
 #     TestPLCCollectionCreator()
 #     TestPLCCollection()
-#     # plc service
+#     # controller_backend service
 #     TestPLCCollectionInsert()
 #     TestPLCCollectionUpdate()
 #     TestPLCCollectionDelete()
 #     TestPLCCollectionRetrieve()
 #     TestPLCCollectionDetail()
-#     # schema plc
+#     # schema controller_backend
 #     TestPLCSchema()
 #     TestPLCUpdateSchema()
-#     # router plc
+#     # router controller_backend
 #     TestListPLC()
 #     TestDetailPLC()
 #     TestUpdatePLC()

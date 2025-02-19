@@ -4,7 +4,7 @@ import json
 from pydantic import ValidationError
 
 sys.path.append("..")
-from src.plc.model import PLCSchema, PLCUpdateSchema
+from src.controller_backend.model import PLCSchema, PLCUpdateSchema
 from src.utils.patterns.builders import PLCDataBuilder
 
 
