@@ -384,9 +384,9 @@ class Controller(metaclass=SingletonMeta):
                     pin_info['register'] = register
                     pin_info['client'] = self.clients_list[pin_info['controller_id']]
             while True:
-                log_message = 'threaaaaaaaaaaaaaad' #! temp
-                self.controller_logger.logger.debug(log_message) #! temp
-                print(log_message) #! temp
+                # log_message = 'threaaaaaaaaaaaaaad' #! temp
+                # self.controller_logger.logger.debug(log_message) #! temp
+                # print(log_message) #! temp
                 try:
                     with self.lock:
                         for scenario, pin_info_list in scenarios_info_temp.items():
