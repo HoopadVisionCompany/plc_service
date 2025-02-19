@@ -154,10 +154,9 @@ def convert_action_to_event_dict(action_data):
 
     controller_event['Pin List'] = [action_data["number"]]
 
-    controller_event['Pin ID'] = action_data["pin_id"]
+    controller_event['Pin ID'] = [action_data["pin_id"]]
 
     controller_event['Pin Type'] = action_data["type"]
     controller_event['Delay List'] = [action_data["delay"]]
     controller_event['Scenario'] = scenario["name"]
-
     return controller_event
