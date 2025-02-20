@@ -9,7 +9,9 @@ from src.utils.auth.authorization import retrieve_user
 controller_factory = ControllerCollectionCreator()
 controller_collection = controller_factory.create_collection()
 
-router = APIRouter()
+router = APIRouter(
+    # dependencies=[Depends(retrieve_user),]
+)
 
 
 @router.get("/controller/list")
