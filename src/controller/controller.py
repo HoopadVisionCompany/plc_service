@@ -229,7 +229,7 @@ class Controller(metaclass=SingletonMeta):
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
                         Timer List -> list | NoneType : List[int] (2000, 2001, ..., 2999)
                         Delay List -> list | NoneType : list[float] (in 'second' metric)
-                        Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
+                        Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , 'Auto Relay' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
 
                     Example:
@@ -461,9 +461,6 @@ class Controller(metaclass=SingletonMeta):
                     pin_info['register'] = register
                     pin_info['client'] = self.clients_list[pin_info['controller_id']]
             while True:
-                # log_message = 'threaaaaaaaaaaaaaad' #! temp
-                # self.controller_logger.logger.debug(log_message) #! temp
-                # print(log_message) #! temp
                 try:
                     with self.lock:
                         for scenario, pin_info_list in scenarios_info_temp.items():
@@ -473,7 +470,7 @@ class Controller(metaclass=SingletonMeta):
                                     # if scenario in ['Auto Alarm', 'Auto Caller']: ##! Temporary Commented
                                     if True: #! Temporary
                                         log_message = f"Button State of pin [{pin_info['number']}] changed"
-                                        self.controller_logger.logger.info(log_message) 
+                                        self.controller_logger.logger.debug(log_message) 
                                         pin_info['button_single'] = current_state
                                         pin_info['previous_state'] = current_state
                                         # time.sleep(1) #! temp
@@ -532,7 +529,7 @@ class Controller(metaclass=SingletonMeta):
     def controller_button_to_db(self, button_states, pin_id, pin):
         result = pin_collection.update_badge(button_states, pin_id)
         log_message = f"Button States of pin [{pin}] is: [{button_states}]"
-        self.controller_logger.logger.debug(log_message)
+        self.controller_logger.logger.info(log_message)
         print(log_message)   
         print(f"update_badge result is: [{result}]")
 
@@ -561,7 +558,7 @@ class Controller(metaclass=SingletonMeta):
                     if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         log_message = f"✅  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]"
-                        self.controller_logger.logger.info(log_message)
+                        self.controller_logger.logger.debug(log_message)
                         print(log_message)
                         return True  # Must be modified
                     elif read_value == write_status:
@@ -588,9 +585,9 @@ class Controller(metaclass=SingletonMeta):
             print(log_message)
             return False  # Must be modified
 
-    def controller_scenario(self, controller_event: dict, client_registers, client):
+    def controller_scenario_handler(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
-            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
+            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller', 'Auto Relay']:
                 self.controller_timer_handler(timer=controller_event['Timer List'][idx],
                                               delay=controller_event['Delay List'][idx],
                                               client=client,
@@ -600,10 +597,14 @@ class Controller(metaclass=SingletonMeta):
                                                                    pin=controller_event['Pin List'][idx],
                                                                    register=register,
                                                                    write_status=True)
+                if control_result_on == True:
+                    log_message = f"✅ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.info(log_message)
+                else:
+                    log_message = f"❌ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.error(log_message)
+                print(log_message)                    
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
-                log_message = f"Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
-                self.controller_logger.logger.info(log_message)
-                print(log_message)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
 
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']: #! log
@@ -629,7 +630,7 @@ class Controller(metaclass=SingletonMeta):
         self.controller_info_extractor(controller_event)
         client_registers = self.controller_register_creator(controller_event)
         client = self.clients_list[self.controller_info_id]
-        self.controller_scenario(controller_event, client_registers, client)
+        self.controller_scenario_handler(controller_event, client_registers, client)
 
     def update_controller_info(self, data: dict):
         controller_name = data["name"]
