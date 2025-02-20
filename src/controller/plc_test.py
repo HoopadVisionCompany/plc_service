@@ -207,7 +207,6 @@ class PLC:
             t2 = datetime.now()
             print(f"..........................elapsed time: {t2 - t1}")                  
     
-    
     def plc_output_on(self, output_number):
         retries = 2
         delay = 0.1
@@ -293,7 +292,6 @@ class PLC:
                 log_message = f"{e}"
                 logger.error(log_message)
 
-
     def plc_output_off(self, output_number):
         retries = 2
         delay = 0.1
@@ -377,13 +375,40 @@ class PLC:
                 log_message = f"{e}"
                 logger.error(log_message)
 
-
-    
+    def plc_input_on(self, input_number, status, unit, option='r2'):
+        if option == 'w':
+            # address = input_number + 101025
+            address = input_number
+            result = self.client.write_register(address, status, unit)
+            print(f"{result=}")
+            # print(result.registers[0])
+            # if result.isError():
+            #     print("Input Error")
+            # else:
+            #     print(f"Input Changed")
+            # self.client.close()
+        elif option == 'r':
+            result = self.client.read_holding_registers(input_number, status, unit)
+            print(result)
+            print(result.registers)
+            print(result.registers[0])
+        elif option == 'r2':
+            result = self.client.read_input_registers(input_number, status, unit)
+            print(result)
+        
+            
 if __name__ == "__main__":
     P = PLC(plc_protocol="Serial")
     P.plc_open_client()
-    status = P.plc_output_on(1)
-    print(status)
-    time.sleep(5)
-    status = P.plc_output_off(1)
+    # status = P.plc_output_on(1)
+    # print(status)
+    # time.sleep(5)
+    # status = P.plc_output_off(1)
+    # print(status)
+
+    P.plc_input_on(6097, 50, unit=1, option='w')
+    # status = P.plc_output_on(6)
+    # time.sleep(0.7)
+    # P.plc_input_on(6097, 1, unit=1, option='r')
+    status = P.plc_output_on(6)
     print(status)

@@ -13,6 +13,7 @@ from src.controller.logger_controller import ControllerLogger
 from src.utils.patterns.singletons import SingletonMeta
 from src.utils.controller_dict_creator import create_scenario_pin_dict
 from src.pin.service import PinCollectionCreator
+from src.subscriber.rabbitmq_publisher import rabbitmq_publisher
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -66,23 +67,40 @@ class Controller(metaclass=SingletonMeta):
                 - Modbus PLC Registers Address:
 
                         MEMORY BIT
-                    PLC Address	Modbus Address
-                        M0	002049 (for Ethernet PLCs it starts at 002048)
-                        M1	002050
-                        M2	002051
-                        M3	002052
-                        M4	002053
-                        M5	002054
-                        M6	002055
-                        M7	002056
-                        M8	002057
-                        M9	002058
-                        |	|
-                        |	|
-                        |	|
-                        |	|
-                        M1535	003584
+                    PLC Address	    Modbus Address
+                        M0	        002049 (for Ethernet PLCs it starts at 002048 ?)
+                        M1	        002050
+                        M2	        002051
+                        M3	        002052
+                        M4	        002053
+                        M5	        002054
+                        M6	        002055
+                        M7	        002056
+                        M8	        002057
+                        M9	        002058
+                        |	        |
+                        |	        |
+                        |	        |
+                        |	        |
+                        M1535	    003584
 
+                        DATA REGISTER	
+                    PLC Address	    Modbus Address
+                        D0	        404097
+                        D1	        404098
+                        D2	        404099
+                        D3	        404100
+                        D4	        404101
+                        D5	        404102
+                        D6	        404103
+                        D7	        404104
+                        D8	        404105
+                        D9	        404106
+                        |	        |
+                        |	        |
+                        |	        |
+                        |	        |
+                        D4095	    047616
                         
             Input Data Format (for the initialization of all kind of controllers):
                 --------------------------------------------------------------------------------------------------------------------
@@ -156,12 +174,50 @@ class Controller(metaclass=SingletonMeta):
                                    ...
                                   'Scenario N': [{pin_info 1},{pin_info 2},...]}                      
 
+                Example:
+                        scenarios_info = {'Auto Alarm': [{
+                                            "_id": "5e572805-a061-4ac9-8e32-2d6f43bcac8c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 0,
+                                            "timer": 2000,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            },
+                                            {
+                                            "_id": "aef3c624-37ba-456f-98b3-3d3e9e2a0ac4",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 10,
+                                            "timer": 2001,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }],
+                          'Auto Gate': [{
+                                            "_id": "d0616f63-b321-48d7-bb5a-6744d865f44c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 100,
+                                            "timer": None,
+                                            "delay": 1,
+                                            "button_dual_reset": True,
+                                            "button_dual_set": False,
+                                            "button_single": None
+                                            }]} 
                 --------------------------------------------------------------------------------------------------------------------
                 controller_event Dictionary Format:
                     controller_event = {'Controller ID':'',
                                         'Pin List': [],
                                         'Pin Type': [],
                                         'Pin ID': [],
+                                        'Timer List': [],
                                         'Delay List': [],
                                         'Scenario': ''
                     }
@@ -171,7 +227,8 @@ class Controller(metaclass=SingletonMeta):
                         Pin List -> list : List[int] (0, 1, ..., 999)
                         Pin ID -> list : UUID4 (Mongodb)
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
-                        Delay List -> list : list[float] (in 'second' metric)
+                        Timer List -> list | NoneType : List[int] (2000, 2001, ..., 2999)
+                        Delay List -> list | NoneType : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
 
@@ -180,11 +237,15 @@ class Controller(metaclass=SingletonMeta):
                                             'Pin List': [0,1,200],
                                             'Pin ID': ['dasfgdeg', 'f324f4f', 'hgh6h6h'],
                                             'Pin Type': [],
+                                            'Timer List': [2001,2100,0],
                                             'Delay List':[3,1.2,0.04],
                                             'Scenario': 'Auto Alarm'}
 
                         'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
-                        'Delay List':[3,1.2,0.04] -> delay (second) between ON and OFF state of 0, 1, and 200 pins respectively
+                        'Timer List': [2000,2001,2999] -> 2000 is D2000 corresponding to the timer (Tx) that is programmed on PLC (for example: ATMR T2 D2000). Note: Data registers from 0 to 1999 are not 'latch' so not be used. Also, Timers from T0 to T127 must be used in PLC program (because of the Base Time)
+                        'Delay List':[3,1.2,0.04] -> delay (second) corresponding to the value of Data Registers (for example: delay between ON and OFF state of 0 pin:
+                                                                                                                                |M0|-----------------------------|SET Y2|
+                                                                                                                                |YD|-----|ATMR T2 D2000|---------|RST Y2|) 
         """
     def __init__(self, controller_info):
 
@@ -212,6 +273,10 @@ class Controller(metaclass=SingletonMeta):
             log_message = f"Exception in Controllers and Scenarios Logging: {e}"
             self.controller_logger.logger.error(log_message)
             print(log_message)
+
+    def controller_clients_heartbeat(self):
+        "rabbitmq_publisher()" #! rabbitmq_publisher()
+        pass
 
     def controller_clients_definition(self, controller_info):
         with self.lock:
@@ -371,6 +436,18 @@ class Controller(metaclass=SingletonMeta):
             return registers_list
         else:
             return pin + 2048
+
+    def controller_timer_handler(self, timer, delay, client, client_unit, option='w'):
+        if option == 'w':
+            # Modbus protocol, you typically subtract 400001 when using function codes 0x03 (read holding registers) and 0x06 (write single register):
+            address = timer + 404097 - 400001 
+            result = client.write_register(address, delay*1000, client_unit) # delay coefficient (1000) is only for T0 to T127 timers
+            print(f"{result=}")
+            return result
+        elif option == 'r':
+            result = client.read_holding_registers(address, 1, client_unit)
+            print(result.registers[0])
+            return result.registers[0]
 
     def controller_state_monitor(self, scenarios_info: dict):
             log_message = "state monitor thread run"
@@ -729,9 +806,9 @@ if __name__ == '__main__':
                                             "controller_unit": 1,
                                             "number": 100,
                                             "delay": 1,
-                                            "button_dual_reset": None,
-                                            "button_dual_set": None,
-                                            "button_single": False
+                                            "button_dual_reset": True,
+                                            "button_dual_set": False,
+                                            "button_single": None
                                             }]}     
         controller.controller_state_monitor(scenarios_info)
         # stop_process()
