@@ -94,7 +94,7 @@ def create_controller_event_dict(task_id):
     return controller_event
 
 
-# a = create_controller_event_dict("ddb14f3a-7aba-478b-be99-23b7b96cd729")
+# a = create_controller_event_dict("e6c5704c-122d-417e-b5f4-aca7a2851b7e")
 # print(a)
 
 
@@ -161,6 +161,6 @@ def convert_action_to_event_dict(action_data):
 
     controller_event['Pin Type'] = action_data["type"]
     controller_event['Delay List'] = [action_data["delay"]]
-    controller_event['Delay List'] = [action_data["timer"]]
+    controller_event['Timer List'] = [action_data["timer"]]
     controller_event['Scenario'] = scenario["name"]
     return controller_event

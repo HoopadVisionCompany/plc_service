@@ -13,7 +13,7 @@ class PinSchema(BaseModel):
     controller_id: str
     number: int = Field(ge=0, le=100)
     delay: int = Field(ge=0, default=0)
-    timer: int = Field(ge=0, le=4095)
+    timer: int = Field(ge=0, le=4095, default=None)
 
 
 class PinUpdateSchema(BaseModel):
@@ -21,4 +21,4 @@ class PinUpdateSchema(BaseModel):
     controller_id: Union[str, None] = None
     number: Union[int, None] = Field(ge=0, le=100)
     delay: Union[int, None] = Field(ge=0, default=0)
-    timer: Union[int, None] = Field(ge=0, le=4095)
+    timer: Union[int, None] = Field(ge=0, le=4095, default=None)
