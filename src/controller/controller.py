@@ -441,7 +441,7 @@ class Controller(metaclass=SingletonMeta):
         if option == 'w':
             # Modbus protocol, you typically subtract 400001 when using function codes 0x03 (read holding registers) and 0x06 (write single register):
             address = timer + 404097 - 400001 
-            result = client.write_register(address, delay*1000, client_unit) # delay coefficient (1000) is only for T0 to T127 timers
+            result = client.write_register(address, delay*10, client_unit) # delay coefficient (10) is only for T0 to T127 timers
             print(f"{result=}")
             return result
         elif option == 'r':
@@ -591,7 +591,10 @@ class Controller(metaclass=SingletonMeta):
     def controller_scenario(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
             if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
-                pin_on_duration = controller_event['Delay List'][idx] #! must be used in the code of adding delay to plc timer
+                self.controller_timer_handler(timer=controller_event['Timer List'][idx],
+                                              delay=controller_event['Delay List'][idx],
+                                              client=client,
+                                              client_unit=self.controller_info_unit)
                 control_result_on = self.controller_output_control(client_unit=self.controller_info_unit,
                                                                    client=client,
                                                                    pin=controller_event['Pin List'][idx],
