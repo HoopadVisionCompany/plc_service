@@ -174,6 +174,43 @@ class Controller(metaclass=SingletonMeta):
                                    ...
                                   'Scenario N': [{pin_info 1},{pin_info 2},...]}                      
 
+                Example:
+                        scenarios_info = {'Auto Alarm': [{
+                                            "_id": "5e572805-a061-4ac9-8e32-2d6f43bcac8c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 0,
+                                            "timer": 2000,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            },
+                                            {
+                                            "_id": "aef3c624-37ba-456f-98b3-3d3e9e2a0ac4",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 10,
+                                            "timer": 2001,
+                                            "delay": 1,
+                                            "button_dual_reset": None,
+                                            "button_dual_set": None,
+                                            "button_single": False
+                                            }],
+                          'Auto Gate': [{
+                                            "_id": "d0616f63-b321-48d7-bb5a-6744d865f44c",
+                                            "type": "in",
+                                            "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
+                                            "controller_unit": 1,
+                                            "number": 100,
+                                            "timer": None,
+                                            "delay": 1,
+                                            "button_dual_reset": True,
+                                            "button_dual_set": False,
+                                            "button_single": None
+                                            }]} 
                 --------------------------------------------------------------------------------------------------------------------
                 controller_event Dictionary Format:
                     controller_event = {'Controller ID':'',
@@ -190,8 +227,8 @@ class Controller(metaclass=SingletonMeta):
                         Pin List -> list : List[int] (0, 1, ..., 999)
                         Pin ID -> list : UUID4 (Mongodb)
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
-                        Timer List -> list : List[int] (2000, 2001, ..., 2999)
-                        Delay List -> list : list[float] (in 'second' metric)
+                        Timer List -> list | NoneType : List[int] (2000, 2001, ..., 2999)
+                        Delay List -> list | NoneType : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
 
@@ -205,7 +242,7 @@ class Controller(metaclass=SingletonMeta):
                                             'Scenario': 'Auto Alarm'}
 
                         'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
-                        'Timer List': [2000,2001,2999] -> 2000 is D2000 corresponding to the timer (Tx) that is programmed on PLC (for example: ATMR T2 D2000). Note: Data registers from 0 to 1999 are not 'latch' so not be used!
+                        'Timer List': [2000,2001,2999] -> 2000 is D2000 corresponding to the timer (Tx) that is programmed on PLC (for example: ATMR T2 D2000). Note: Data registers from 0 to 1999 are not 'latch' so not be used. Also, Timers from T0 to T127 must be used in PLC program (because of the Base Time)
                         'Delay List':[3,1.2,0.04] -> delay (second) corresponding to the value of Data Registers (for example: delay between ON and OFF state of 0 pin:
                                                                                                                                 |M0|-----------------------------|SET Y2|
                                                                                                                                 |YD|-----|ATMR T2 D2000|---------|RST Y2|) 
@@ -399,6 +436,18 @@ class Controller(metaclass=SingletonMeta):
             return registers_list
         else:
             return pin + 2048
+
+    def controller_timer_handler(self, timer, delay, client, client_unit, option='w'):
+        if option == 'w':
+            # Modbus protocol, you typically subtract 400001 when using function codes 0x03 (read holding registers) and 0x06 (write single register):
+            address = timer + 404097 - 400001 
+            result = client.write_register(address, delay*1000, client_unit) # delay coefficient (1000) is only for T0 to T127 timers
+            print(f"{result=}")
+            return result
+        elif option == 'r':
+            result = client.read_holding_registers(address, 1, client_unit)
+            print(result.registers[0])
+            return result.registers[0]
 
     def controller_state_monitor(self, scenarios_info: dict):
             log_message = "state monitor thread run"
