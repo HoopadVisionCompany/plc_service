@@ -7,9 +7,7 @@ from src.utils.auth.authorization import retrieve_user
 
 pin_factory = PinCollectionCreator()
 pin_collection = pin_factory.create_collection()
-router = APIRouter(
-    dependencies=[Depends(retrieve_user), ]
-)
+router = APIRouter()
 
 
 @router.get("/pin/list")
