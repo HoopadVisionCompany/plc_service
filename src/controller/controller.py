@@ -67,23 +67,40 @@ class Controller(metaclass=SingletonMeta):
                 - Modbus PLC Registers Address:
 
                         MEMORY BIT
-                    PLC Address	Modbus Address
-                        M0	002049 (for Ethernet PLCs it starts at 002048)
-                        M1	002050
-                        M2	002051
-                        M3	002052
-                        M4	002053
-                        M5	002054
-                        M6	002055
-                        M7	002056
-                        M8	002057
-                        M9	002058
-                        |	|
-                        |	|
-                        |	|
-                        |	|
-                        M1535	003584
+                    PLC Address	    Modbus Address
+                        M0	        002049 (for Ethernet PLCs it starts at 002048 ?)
+                        M1	        002050
+                        M2	        002051
+                        M3	        002052
+                        M4	        002053
+                        M5	        002054
+                        M6	        002055
+                        M7	        002056
+                        M8	        002057
+                        M9	        002058
+                        |	        |
+                        |	        |
+                        |	        |
+                        |	        |
+                        M1535	    003584
 
+                        DATA REGISTER	
+                    PLC Address	    Modbus Address
+                        D0	        404097
+                        D1	        404098
+                        D2	        404099
+                        D3	        404100
+                        D4	        404101
+                        D5	        404102
+                        D6	        404103
+                        D7	        404104
+                        D8	        404105
+                        D9	        404106
+                        |	        |
+                        |	        |
+                        |	        |
+                        |	        |
+                        D4095	    047616
                         
             Input Data Format (for the initialization of all kind of controllers):
                 --------------------------------------------------------------------------------------------------------------------
@@ -163,6 +180,7 @@ class Controller(metaclass=SingletonMeta):
                                         'Pin List': [],
                                         'Pin Type': [],
                                         'Pin ID': [],
+                                        'Timer List': [],
                                         'Delay List': [],
                                         'Scenario': ''
                     }
@@ -172,6 +190,7 @@ class Controller(metaclass=SingletonMeta):
                         Pin List -> list : List[int] (0, 1, ..., 999)
                         Pin ID -> list : UUID4 (Mongodb)
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
+                        Timer List -> list : List[int] (2000, 2001, ..., 2999)
                         Delay List -> list : list[float] (in 'second' metric)
                         Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
@@ -181,11 +200,15 @@ class Controller(metaclass=SingletonMeta):
                                             'Pin List': [0,1,200],
                                             'Pin ID': ['dasfgdeg', 'f324f4f', 'hgh6h6h'],
                                             'Pin Type': [],
+                                            'Timer List': [2001,2100,0],
                                             'Delay List':[3,1.2,0.04],
                                             'Scenario': 'Auto Alarm'}
 
                         'Pin List': [0,1,200] -> 0 is Y0 or M0 Register (depends on PLC program) for Delta PLCs , 1 is Y1 or M1 Register (depends on PLC program) for Delta PLCs, 200 is M200 Register (must programmed on PLC) for Delta PLCs
-                        'Delay List':[3,1.2,0.04] -> delay (second) between ON and OFF state of 0, 1, and 200 pins respectively
+                        'Timer List': [2000,2001,2999] -> 2000 is D2000 corresponding to the timer (Tx) that is programmed on PLC (for example: ATMR T2 D2000). Note: Data registers from 0 to 1999 are not 'latch' so not be used!
+                        'Delay List':[3,1.2,0.04] -> delay (second) corresponding to the value of Data Registers (for example: delay between ON and OFF state of 0 pin:
+                                                                                                                                |M0|-----------------------------|SET Y2|
+                                                                                                                                |YD|-----|ATMR T2 D2000|---------|RST Y2|) 
         """
     def __init__(self, controller_info):
 
@@ -734,9 +757,9 @@ if __name__ == '__main__':
                                             "controller_unit": 1,
                                             "number": 100,
                                             "delay": 1,
-                                            "button_dual_reset": None,
-                                            "button_dual_set": None,
-                                            "button_single": False
+                                            "button_dual_reset": True,
+                                            "button_dual_set": False,
+                                            "button_single": None
                                             }]}     
         controller.controller_state_monitor(scenarios_info)
         # stop_process()
