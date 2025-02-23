@@ -292,45 +292,51 @@ class Controller(metaclass=SingletonMeta):
                 controller_connection_state = {'controller_id': controller_id, 'connection': False}
                 rabbitmq_publisher(controller_connection_state)
             except Exception as e:
-                print(f"----------Exception: {e}")
-            previous_state = False
+                print(f"----------Exception for {controller_id}: {e}")
+                print("1*****************************")
+            previous_state = None
             while True:
                 try:
-                    if self.controller_client_type_selector(controller_protocol, client):
-                        result = client.read_coils(0, 1, unit=controller_unit)
-                        print(f"----------{result=}")
-                        if result.isError():
+                    if self.controller_client_type_selector(controller_protocol, client):                        
+                        result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
+                        # print(f"----------{result=}")
+                        if result == None and self.controller_client_type_selector(controller_protocol, client):
+                            print(">>>>>>>>>>>>>>>>>>>> 1")
+                            time.sleep(1)
                             current_state = False
                             if current_state != previous_state:
                                 controller_connection_state = {'controller_id': controller_id, 'connection': False}
                                 rabbitmq_publisher(controller_connection_state)
                                 previous_state = current_state
-                        else:
+                                print(">>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
+                        elif result == True or result == False:
+                            print(">>>>>>>>>>>>>>>>>>>> 3")
                             current_state = True
                             if current_state != previous_state:
                                 controller_connection_state = {'controller_id': controller_id, 'connection': True}
                                 rabbitmq_publisher(controller_connection_state)
                                 previous_state = current_state
-                        # current_state = True
-                        # if current_state != previous_state:
-                        #     controller_connection_state = {'controller_id': controller_id, 'connection': True}
-                        #     rabbitmq_publisher(controller_connection_state)
-                        #     previous_state = current_state
+                                print(">>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
                     else:
+                        print(">>>>>>>>>>>>>>>>>>>> 5")
                         current_state = False
                         if current_state != previous_state:
                             controller_connection_state = {'controller_id': controller_id, 'connection': False}
                             rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
+                            print(">>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
                 except Exception as e:
+                    print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
+                    print("2*****************************")
                     current_state = False
                     if current_state != previous_state:
                         controller_connection_state = {'controller_id': controller_id, 'connection': False}
                         rabbitmq_publisher(controller_connection_state)
                         previous_state = current_state
-                    rabbitmq_publisher(controller_connection_state)
+                        print(">>>>>>>>>>>>>>>>>>>> 8")
+                    # rabbitmq_publisher(controller_connection_state)
 
-                time.sleep(2)
+                time.sleep(1)
     
     def controller_clients_definition(self, controller_info):
         with self.lock:
@@ -542,7 +548,7 @@ class Controller(metaclass=SingletonMeta):
                 except Exception as e:
                     log_message = f"Exception in controller_state_monitor(): {e}"
                     self.controller_logger.logger.error(log_message)
-                    print(log_message)
+                    # print(log_message)
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate

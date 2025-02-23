@@ -9,7 +9,11 @@ routing_key = os.getenv("RABBITMQ_QUEUE_NAME")
 def on_message3(channel,method,properties,body):
     print(f'message recieved from publisher 3 : {body} at --------{datetime.datetime.now()}')
 
-connection_parameters=pika.ConnectionParameters(host='localhost')
+connection_parameters=pika.ConnectionParameters(host='localhost', 
+    heartbeat=600,  # Send a heartbeat every 10 minutes
+    blocked_connection_timeout=300  # Avoid blocking indefinitely
+)
+
 connection=pika.BlockingConnection(connection_parameters)
 channel=connection.channel()
 
