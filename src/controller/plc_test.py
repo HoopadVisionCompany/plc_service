@@ -409,6 +409,6 @@ if __name__ == "__main__":
     P.plc_input_on(6097, 50, unit=1, option='w')
     # status = P.plc_output_on(6)
     # time.sleep(0.7)
-    # P.plc_input_on(6097, 1, unit=1, option='r')
+    P.plc_input_on(6097, 1, unit=1, option='r')
     status = P.plc_output_on(6)
     print(status)

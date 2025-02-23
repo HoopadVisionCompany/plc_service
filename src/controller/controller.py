@@ -262,6 +262,8 @@ class Controller(metaclass=SingletonMeta):
         self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
         self.thread_controller_state_monitor.start()
 
+        self.controller_clients_heartbeat()
+
         # Log the initialization
         self.controller_logger.logger.debug("................Controller class initialized................")
         try:
@@ -275,12 +277,64 @@ class Controller(metaclass=SingletonMeta):
             print(log_message)
 
     def controller_clients_heartbeat(self):
-        "rabbitmq_publisher()" #! rabbitmq_publisher()
-        pass
+        time.sleep(5)
+        threads = []
+        print(f"**************************** {self.clients_list}")
+        for controller_id, client in self.clients_list.items():
+            print(f".........................................{controller_id=} , {client=}, {self.clients_protocol[controller_id]=} , {self.clients_unit[controller_id]=}")
+            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ), daemon=True)
+            threads.append(thread)
+            thread.start()
 
+    def controller_check_connection(self, controller_id, controller_protocol, client, controller_unit):
+        with self.lock:
+            try:
+                controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                rabbitmq_publisher(controller_connection_state)
+            except Exception as e:
+                print(f"----------Exception: {e}")
+            previous_state = False
+            while True:
+                try:
+                    if self.controller_client_type_selector(controller_protocol, client):
+                        result = client.read_coils(0, 1, unit=controller_unit)
+                        print(f"----------{result=}")
+                        if result.isError():
+                            current_state = False
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                                rabbitmq_publisher(controller_connection_state)
+                                previous_state = current_state
+                        else:
+                            current_state = True
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': True}
+                                rabbitmq_publisher(controller_connection_state)
+                                previous_state = current_state
+                        # current_state = True
+                        # if current_state != previous_state:
+                        #     controller_connection_state = {'controller_id': controller_id, 'connection': True}
+                        #     rabbitmq_publisher(controller_connection_state)
+                        #     previous_state = current_state
+                    else:
+                        current_state = False
+                        if current_state != previous_state:
+                            controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                            rabbitmq_publisher(controller_connection_state)
+                            previous_state = current_state
+                except Exception as e:
+                    current_state = False
+                    if current_state != previous_state:
+                        controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                        rabbitmq_publisher(controller_connection_state)
+                        previous_state = current_state
+                    rabbitmq_publisher(controller_connection_state)
+
+                time.sleep(2)
+    
     def controller_clients_definition(self, controller_info):
         with self.lock:
-            self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
+            self.clients_list, self.clients_protocol, self.clients_unit = self.controller_clients_creator(controller_info)
             self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
         log_message = "Clients definition thread run"
         self.controller_logger.logger.debug(log_message)
@@ -288,6 +342,7 @@ class Controller(metaclass=SingletonMeta):
     def controller_clients_creator(self, controller_info: dict):
         clients_list = {}
         clients_protocol = {}
+        clients_unit = {}
         for controller_name, controller in controller_info.items():
             if controller['Controller Type'] == 'PLC Delta':
                 if controller['Controller Protocol'] == 'Ethernet':
@@ -297,6 +352,7 @@ class Controller(metaclass=SingletonMeta):
                                           unit_id=controller['Controller Unit'])
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Ethernet'
+                    clients_unit[controller['Controller ID']] = controller['Controller Unit']
                 elif controller['Controller Protocol'] == 'Serial':
                     client = ModbusSerialClient(method="rtu",
                                                 port=controller['Controller Driver'], 
@@ -307,6 +363,7 @@ class Controller(metaclass=SingletonMeta):
                                                 timeout=0.1)
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Serial'
+                    clients_unit[controller['Controller ID']] = controller['Controller Unit']
 
                 log_message = f"✅ Client for [{controller_name}] controller created"
                 self.controller_logger.logger.info(log_message)
@@ -315,12 +372,13 @@ class Controller(metaclass=SingletonMeta):
             else:
                 clients_list[controller['Controller ID']] = None
                 clients_protocol[controller['Controller ID']] = None
+                clients_unit[controller['Controller ID']] = None
                 log_message = f"❌ Client for [{controller_name}] controller is not defined!"
                 self.controller_logger.logger.error(log_message)
                 print(log_message)
 
 
-        return clients_list, clients_protocol
+        return clients_list, clients_protocol, clients_unit
 
     def controller_client_type_selector(self, client_protocol: str, client):
         if client_protocol == 'Ethernet':
@@ -333,10 +391,10 @@ class Controller(metaclass=SingletonMeta):
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
         max_retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         retry_delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
-        connected = False
         name_counter = 0
         controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
+            connected = False
             controller_name = controller_names[name_counter]
             name_counter += 1
             retries = 0
