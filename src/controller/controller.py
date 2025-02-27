@@ -304,7 +304,7 @@ class Controller(metaclass=SingletonMeta):
         # with self.lock: #! commented
         try:
             print(f"xxxxxxxxxxxx {controller_id}")
-            controller_connection_state = {'controller_id': controller_id, 'connection': False}
+            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Controller Initialized'}
             print(f"yyyyyyyyyyyy {controller_id}")
             connection_queue.put(controller_connection_state)
             print(f"zzzzzzzzzzzz {controller_id}")
@@ -319,43 +319,43 @@ class Controller(metaclass=SingletonMeta):
                     result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
                     # print(f"----------{result=}")
                     if result == None and self.controller_client_type_selector(controller_protocol, client):
-                        print(">>>>>>>>>>>>>>>>>>>> 1")
+                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 1")
                         time.sleep(1)
                         current_state = False
                         if current_state != previous_state:
-                            controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Connection between USB/RS485 and PLC is Broken or Power is OFF'}
                             connection_queue.put(controller_connection_state)
                             # rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
-                            print(">>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
+                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
                     elif result == True or result == False:
-                        print(">>>>>>>>>>>>>>>>>>>> 3")
+                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 3")
                         current_state = True
                         if current_state != previous_state:
-                            controller_connection_state = {'controller_id': controller_id, 'connection': True}
+                            controller_connection_state = {'controller_id': controller_id, 'connection': True, 'description':"Controller Communication is OK"}
                             connection_queue.put(controller_connection_state)
                             # rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
-                            print(">>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
+                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
                 else:
-                    print(">>>>>>>>>>>>>>>>>>>> 5")
+                    print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 5")
                     current_state = False
                     if current_state != previous_state:
-                        controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                        controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':"USB/RS485 is Not Connected"}
                         connection_queue.put(controller_connection_state)
                         # rabbitmq_publisher(controller_connection_state)
                         previous_state = current_state
-                        print(">>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
+                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
             except Exception as e:
                 print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
                 print("2*****************************")
                 current_state = False
                 if current_state != previous_state:
-                    controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                    controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description': f"Exception: {e}"}
                     connection_queue.put(controller_connection_state)
                     # rabbitmq_publisher(controller_connection_state)
                     previous_state = current_state
-                    print(">>>>>>>>>>>>>>>>>>>> 8")
+                    print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 8")
                 # rabbitmq_publisher(controller_connection_state)
 
             time.sleep(1)
