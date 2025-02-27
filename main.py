@@ -85,9 +85,12 @@ def run_initialize_scenarios():
 def connection_queue_publisher():
     global connection_queue
     while True:
-        q_get = connection_queue.get()
-        if q_get:
-            rabbitmq_publisher(json.dumps(q_get))
+        try:
+            q_get = connection_queue.get()
+            if q_get:
+                rabbitmq_publisher(json.dumps(q_get))
+        except Exception as e:
+            rabbitmq_publisher(f"Some hardware error Happend: {e}")
 
 def run_all():
     thread_run_server = Thread(target=run_server, args=())

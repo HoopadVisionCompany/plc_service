@@ -323,11 +323,11 @@ class Controller(metaclass=SingletonMeta):
                         time.sleep(1)
                         current_state = False
                         if current_state != previous_state:
-                            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Connection between USB/RS485 and PLC is Broken or Power is OFF'}
+                            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Controller Power is OFF or Connection between USB/RS485 and Controller is Broken'}
                             connection_queue.put(controller_connection_state)
                             # rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
-                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
+                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken")
                     elif result == True or result == False:
                         print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 3")
                         current_state = True
