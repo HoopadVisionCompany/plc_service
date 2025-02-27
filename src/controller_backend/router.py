@@ -10,7 +10,7 @@ controller_factory = ControllerCollectionCreator()
 controller_collection = controller_factory.create_collection()
 
 router = APIRouter(
-    # dependencies=[Depends(retrieve_user),]
+    dependencies=[Depends(retrieve_user),]
 )
 
 
