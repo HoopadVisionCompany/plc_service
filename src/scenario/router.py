@@ -6,7 +6,7 @@ from src.utils.auth.authorization import retrieve_user
 scenario_factory = ScenarioCollectionCreator()
 scenario_collection = scenario_factory.create_collection()
 router = APIRouter(
-    dependencies=[Depends(retrieve_user), ]
+    # dependencies=[Depends(retrieve_user), ]
 )
 
 

@@ -60,7 +60,7 @@ class RabbitmqBuilder(metaclass=SingletonMeta):
         if self.connection is None or self.connection.is_closed:
             self.credentials = pika.PlainCredentials(username=self.rmq_user_name, password=self.rmq_password)
             self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=self.rmq_host, port=self.rmq_port, credentials=self.credentials))
+                pika.ConnectionParameters(host=self.rmq_host, port=self.rmq_port, credentials=self.credentials, heartbeat=600, blocked_connection_timeout=300))
             self.channel = self.connection.channel()
             self.channel.queue_declare(queue=self.rmq_queue_name)
             print(

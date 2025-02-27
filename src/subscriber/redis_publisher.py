@@ -28,6 +28,7 @@ action_data_publish_on = {"type": "action",
                                 'scenario_id': '5606fb01-fb9f-4dac-9d42-25ed9609666e',
                                 'task_id': 'f4eab1c2-fbd4-49c5-adb1-e4c9182c316e', 
                                 'delay': 1,
+                                'timer': 2001,
                                 'pin_id': '5e572805-a061-4ac9-8e32-2d6f43bcac8c'}
                        }
 
@@ -41,11 +42,12 @@ action_data_publish_off = {"type": "action",
                                 'scenario_id': '5606fb01-fb9f-4dac-9d42-25ed9609666x',
                                 'task_id': 'f4eab1c2-fbd4-49c5-adb1-e4c9182c316x', 
                                 'delay': 1,
+                                'timer': 2001,
                                 'pin_id': '5e572805-a061-4ac9-8e32-2d6f43bcac8c'}
                        }
-# publish(event_data_publish)
-import time
+publish(event_data_publish)
+# import time
 
-publish(action_data_publish_on)
-time.sleep(5)
-publish(action_data_publish_off)
+# publish(action_data_publish_on)
+# time.sleep(5)
+# publish(action_data_publish_off)
