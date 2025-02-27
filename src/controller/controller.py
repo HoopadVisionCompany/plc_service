@@ -229,7 +229,7 @@ class Controller(metaclass=SingletonMeta):
                         Pin Type -> list : List[str] (Fixed Names: 'in' , 'out')
                         Timer List -> list | NoneType : List[int] (2000, 2001, ..., 2999)
                         Delay List -> list | NoneType : list[float] (in 'second' metric)
-                        Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
+                        Scenarios -> str : Fixed Names ('Auto Alarm' , 'Auto Caller' , 'Auto Gate' , 'Auto Relay' , Manual Alarm ON' , 'Manual Alarm OFF', 'Manual Gate Open' , 'Manual Gate Close', 'Relay ON' , 'Relay OFF')
                         
 
                     Example:
@@ -262,6 +262,8 @@ class Controller(metaclass=SingletonMeta):
         self.thread_controller_state_monitor = threading.Thread(target=self.controller_state_monitor, args=(scenarios_info,), daemon=True)
         self.thread_controller_state_monitor.start()
 
+        self.controller_clients_heartbeat()
+
         # Log the initialization
         self.controller_logger.logger.debug("................Controller class initialized................")
         try:
@@ -275,12 +277,70 @@ class Controller(metaclass=SingletonMeta):
             print(log_message)
 
     def controller_clients_heartbeat(self):
-        "rabbitmq_publisher()" #! rabbitmq_publisher()
-        pass
+        time.sleep(5)
+        threads = []
+        print(f"**************************** {self.clients_list}")
+        for controller_id, client in self.clients_list.items():
+            print(f".........................................{controller_id=} , {client=}, {self.clients_protocol[controller_id]=} , {self.clients_unit[controller_id]=}")
+            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ), daemon=True)
+            threads.append(thread)
+            thread.start()
 
+    def controller_check_connection(self, controller_id, controller_protocol, client, controller_unit):
+        with self.lock:
+            try:
+                controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                rabbitmq_publisher(controller_connection_state)
+            except Exception as e:
+                print(f"----------Exception for {controller_id}: {e}")
+                print("1*****************************")
+            previous_state = None
+            while True:
+                try:
+                    if self.controller_client_type_selector(controller_protocol, client):                        
+                        result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
+                        # print(f"----------{result=}")
+                        if result == None and self.controller_client_type_selector(controller_protocol, client):
+                            print(">>>>>>>>>>>>>>>>>>>> 1")
+                            time.sleep(1)
+                            current_state = False
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                                rabbitmq_publisher(controller_connection_state)
+                                previous_state = current_state
+                                print(">>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
+                        elif result == True or result == False:
+                            print(">>>>>>>>>>>>>>>>>>>> 3")
+                            current_state = True
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': True}
+                                rabbitmq_publisher(controller_connection_state)
+                                previous_state = current_state
+                                print(">>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
+                    else:
+                        print(">>>>>>>>>>>>>>>>>>>> 5")
+                        current_state = False
+                        if current_state != previous_state:
+                            controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                            rabbitmq_publisher(controller_connection_state)
+                            previous_state = current_state
+                            print(">>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
+                except Exception as e:
+                    print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
+                    print("2*****************************")
+                    current_state = False
+                    if current_state != previous_state:
+                        controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                        rabbitmq_publisher(controller_connection_state)
+                        previous_state = current_state
+                        print(">>>>>>>>>>>>>>>>>>>> 8")
+                    # rabbitmq_publisher(controller_connection_state)
+
+                time.sleep(1)
+    
     def controller_clients_definition(self, controller_info):
         with self.lock:
-            self.clients_list, self.clients_protocol = self.controller_clients_creator(controller_info)
+            self.clients_list, self.clients_protocol, self.clients_unit = self.controller_clients_creator(controller_info)
             self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
         log_message = "Clients definition thread run"
         self.controller_logger.logger.debug(log_message)
@@ -288,6 +348,7 @@ class Controller(metaclass=SingletonMeta):
     def controller_clients_creator(self, controller_info: dict):
         clients_list = {}
         clients_protocol = {}
+        clients_unit = {}
         for controller_name, controller in controller_info.items():
             if controller['Controller Type'] == 'PLC Delta':
                 if controller['Controller Protocol'] == 'Ethernet':
@@ -297,6 +358,7 @@ class Controller(metaclass=SingletonMeta):
                                           unit_id=controller['Controller Unit'])
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Ethernet'
+                    clients_unit[controller['Controller ID']] = controller['Controller Unit']
                 elif controller['Controller Protocol'] == 'Serial':
                     client = ModbusSerialClient(method="rtu",
                                                 port=controller['Controller Driver'], 
@@ -307,6 +369,7 @@ class Controller(metaclass=SingletonMeta):
                                                 timeout=0.1)
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Serial'
+                    clients_unit[controller['Controller ID']] = controller['Controller Unit']
 
                 log_message = f"✅ Client for [{controller_name}] controller created"
                 self.controller_logger.logger.info(log_message)
@@ -315,12 +378,13 @@ class Controller(metaclass=SingletonMeta):
             else:
                 clients_list[controller['Controller ID']] = None
                 clients_protocol[controller['Controller ID']] = None
+                clients_unit[controller['Controller ID']] = None
                 log_message = f"❌ Client for [{controller_name}] controller is not defined!"
                 self.controller_logger.logger.error(log_message)
                 print(log_message)
 
 
-        return clients_list, clients_protocol
+        return clients_list, clients_protocol, clients_unit
 
     def controller_client_type_selector(self, client_protocol: str, client):
         if client_protocol == 'Ethernet':
@@ -333,10 +397,10 @@ class Controller(metaclass=SingletonMeta):
     def controller_clients_initial_connector(self, clients_list: dict, clients_protocol: list, controller_info: dict):
         max_retries = int(os.getenv('CONTROLLER_RETRIES_NUM'))
         retry_delay = float(os.getenv('CONTROLLER_RETRIES_DELAY'))
-        connected = False
         name_counter = 0
         controller_names = list(controller_info.keys())
         for controller_id, client in clients_list.items():
+            connected = False
             controller_name = controller_names[name_counter]
             name_counter += 1
             retries = 0
@@ -441,7 +505,7 @@ class Controller(metaclass=SingletonMeta):
         if option == 'w':
             # Modbus protocol, you typically subtract 400001 when using function codes 0x03 (read holding registers) and 0x06 (write single register):
             address = timer + 404097 - 400001 
-            result = client.write_register(address, delay*1000, client_unit) # delay coefficient (1000) is only for T0 to T127 timers
+            result = client.write_register(address, delay*10, client_unit) # delay coefficient (10) is only for T0 to T127 timers
             print(f"{result=}")
             return result
         elif option == 'r':
@@ -461,9 +525,6 @@ class Controller(metaclass=SingletonMeta):
                     pin_info['register'] = register
                     pin_info['client'] = self.clients_list[pin_info['controller_id']]
             while True:
-                # log_message = 'threaaaaaaaaaaaaaad' #! temp
-                # self.controller_logger.logger.debug(log_message) #! temp
-                # print(log_message) #! temp
                 try:
                     with self.lock:
                         for scenario, pin_info_list in scenarios_info_temp.items():
@@ -473,7 +534,7 @@ class Controller(metaclass=SingletonMeta):
                                     # if scenario in ['Auto Alarm', 'Auto Caller']: ##! Temporary Commented
                                     if True: #! Temporary
                                         log_message = f"Button State of pin [{pin_info['number']}] changed"
-                                        self.controller_logger.logger.info(log_message) 
+                                        self.controller_logger.logger.debug(log_message) 
                                         pin_info['button_single'] = current_state
                                         pin_info['previous_state'] = current_state
                                         # time.sleep(1) #! temp
@@ -487,7 +548,7 @@ class Controller(metaclass=SingletonMeta):
                 except Exception as e:
                     log_message = f"Exception in controller_state_monitor(): {e}"
                     self.controller_logger.logger.error(log_message)
-                    print(log_message)
+                    # print(log_message)
         
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
@@ -532,7 +593,7 @@ class Controller(metaclass=SingletonMeta):
     def controller_button_to_db(self, button_states, pin_id, pin):
         result = pin_collection.update_badge(button_states, pin_id)
         log_message = f"Button States of pin [{pin}] is: [{button_states}]"
-        self.controller_logger.logger.debug(log_message)
+        self.controller_logger.logger.info(log_message)
         print(log_message)   
         print(f"update_badge result is: [{result}]")
 
@@ -561,7 +622,7 @@ class Controller(metaclass=SingletonMeta):
                     if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         log_message = f"✅  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]"
-                        self.controller_logger.logger.info(log_message)
+                        self.controller_logger.logger.debug(log_message)
                         print(log_message)
                         return True  # Must be modified
                     elif read_value == write_status:
@@ -588,19 +649,26 @@ class Controller(metaclass=SingletonMeta):
             print(log_message)
             return False  # Must be modified
 
-    def controller_scenario(self, controller_event: dict, client_registers, client):
+    def controller_scenario_handler(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
-            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller']:
-                pin_on_duration = controller_event['Delay List'][idx] #! must be used in the code of adding delay to plc timer
+            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller', 'Auto Relay']:
+                self.controller_timer_handler(timer=controller_event['Timer List'][idx],
+                                              delay=controller_event['Delay List'][idx],
+                                              client=client,
+                                              client_unit=self.controller_info_unit)
                 control_result_on = self.controller_output_control(client_unit=self.controller_info_unit,
                                                                    client=client,
                                                                    pin=controller_event['Pin List'][idx],
                                                                    register=register,
                                                                    write_status=True)
+                if control_result_on == True:
+                    log_message = f"✅ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.info(log_message)
+                else:
+                    log_message = f"❌ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.error(log_message)
+                print(log_message)                    
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
-                log_message = f"Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
-                self.controller_logger.logger.info(log_message)
-                print(log_message)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
 
             elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']: #! log
@@ -626,7 +694,7 @@ class Controller(metaclass=SingletonMeta):
         self.controller_info_extractor(controller_event)
         client_registers = self.controller_register_creator(controller_event)
         client = self.clients_list[self.controller_info_id]
-        self.controller_scenario(controller_event, client_registers, client)
+        self.controller_scenario_handler(controller_event, client_registers, client)
 
     def update_controller_info(self, data: dict):
         controller_name = data["name"]
