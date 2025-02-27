@@ -15,7 +15,9 @@ from src.utils.controller_dict_creator import create_scenario_pin_dict
 from src.pin.service import PinCollectionCreator
 from src.subscriber.rabbitmq_publisher import rabbitmq_publisher
 from dotenv import load_dotenv
+import queue
 
+connection_queue = queue.Queue()
 load_dotenv()
 
 pin_factory = PinCollectionCreator()
@@ -282,61 +284,81 @@ class Controller(metaclass=SingletonMeta):
         print(f"**************************** {self.clients_list}")
         for controller_id, client in self.clients_list.items():
             print(f".........................................{controller_id=} , {client=}, {self.clients_protocol[controller_id]=} , {self.clients_unit[controller_id]=}")
-            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ), daemon=True)
+            # thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ))
+            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ), daemon=True) #! main
             threads.append(thread)
-            thread.start()
+            # thread.start() #! commented
+
+        for thr in threads:
+            print(f"Starting thread: {thr}")
+            thr.start()
+            # thr.join()
+
+        # for thr in threads:
+        #     thr.join()
+        
 
     def controller_check_connection(self, controller_id, controller_protocol, client, controller_unit):
-        with self.lock:
+        print(f"Thread running for {controller_id}")
+        global connection_queue
+        # with self.lock: #! commented
+        try:
+            print(f"xxxxxxxxxxxx {controller_id}")
+            controller_connection_state = {'controller_id': controller_id, 'connection': False}
+            print(f"yyyyyyyyyyyy {controller_id}")
+            connection_queue.put(controller_connection_state)
+            print(f"zzzzzzzzzzzz {controller_id}")
+            # rabbitmq_publisher(controller_connection_state)
+        except Exception as e:
+            print(f"----------Exception for {controller_id}: {e}")
+            print("1*****************************")
+        previous_state = None
+        while True:
             try:
-                controller_connection_state = {'controller_id': controller_id, 'connection': False}
-                rabbitmq_publisher(controller_connection_state)
-            except Exception as e:
-                print(f"----------Exception for {controller_id}: {e}")
-                print("1*****************************")
-            previous_state = None
-            while True:
-                try:
-                    if self.controller_client_type_selector(controller_protocol, client):                        
-                        result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
-                        # print(f"----------{result=}")
-                        if result == None and self.controller_client_type_selector(controller_protocol, client):
-                            print(">>>>>>>>>>>>>>>>>>>> 1")
-                            time.sleep(1)
-                            current_state = False
-                            if current_state != previous_state:
-                                controller_connection_state = {'controller_id': controller_id, 'connection': False}
-                                rabbitmq_publisher(controller_connection_state)
-                                previous_state = current_state
-                                print(">>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
-                        elif result == True or result == False:
-                            print(">>>>>>>>>>>>>>>>>>>> 3")
-                            current_state = True
-                            if current_state != previous_state:
-                                controller_connection_state = {'controller_id': controller_id, 'connection': True}
-                                rabbitmq_publisher(controller_connection_state)
-                                previous_state = current_state
-                                print(">>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
-                    else:
-                        print(">>>>>>>>>>>>>>>>>>>> 5")
+                if self.controller_client_type_selector(controller_protocol, client):                        
+                    result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
+                    # print(f"----------{result=}")
+                    if result == None and self.controller_client_type_selector(controller_protocol, client):
+                        print(">>>>>>>>>>>>>>>>>>>> 1")
+                        time.sleep(1)
                         current_state = False
                         if current_state != previous_state:
                             controller_connection_state = {'controller_id': controller_id, 'connection': False}
-                            rabbitmq_publisher(controller_connection_state)
+                            connection_queue.put(controller_connection_state)
+                            # rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
-                            print(">>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
-                except Exception as e:
-                    print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
-                    print("2*****************************")
+                            print(">>>>>>>>>>>>>>>>>>>> 2: Connection between USB/RS485 and PLC is Broken or Power is OFF")
+                    elif result == True or result == False:
+                        print(">>>>>>>>>>>>>>>>>>>> 3")
+                        current_state = True
+                        if current_state != previous_state:
+                            controller_connection_state = {'controller_id': controller_id, 'connection': True}
+                            connection_queue.put(controller_connection_state)
+                            # rabbitmq_publisher(controller_connection_state)
+                            previous_state = current_state
+                            print(">>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
+                else:
+                    print(">>>>>>>>>>>>>>>>>>>> 5")
                     current_state = False
                     if current_state != previous_state:
                         controller_connection_state = {'controller_id': controller_id, 'connection': False}
-                        rabbitmq_publisher(controller_connection_state)
+                        connection_queue.put(controller_connection_state)
+                        # rabbitmq_publisher(controller_connection_state)
                         previous_state = current_state
-                        print(">>>>>>>>>>>>>>>>>>>> 8")
+                        print(">>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
+            except Exception as e:
+                print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
+                print("2*****************************")
+                current_state = False
+                if current_state != previous_state:
+                    controller_connection_state = {'controller_id': controller_id, 'connection': False}
+                    connection_queue.put(controller_connection_state)
                     # rabbitmq_publisher(controller_connection_state)
+                    previous_state = current_state
+                    print(">>>>>>>>>>>>>>>>>>>> 8")
+                # rabbitmq_publisher(controller_connection_state)
 
-                time.sleep(1)
+            time.sleep(1)
     
     def controller_clients_definition(self, controller_info):
         with self.lock:
