@@ -88,7 +88,7 @@ def connection_queue_publisher():
         try:
             q_get = connection_queue.get()
             if q_get:
-                rabbitmq_publisher(json.dumps(q_get))
+                rabbitmq_publisher(json.dumps(q_get, ensure_ascii=False))
         except Exception as e:
             rabbitmq_publisher(f"Some hardware error Happend: {e}")
 

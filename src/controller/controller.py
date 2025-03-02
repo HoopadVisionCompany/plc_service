@@ -64,7 +64,7 @@ class Controller(metaclass=SingletonMeta):
                         $ pip install pyModbusTCP
 
                 - Run the Test Code:
-                    $ python3 PLC.py
+                    $ python3 plc_test.py
 
                 - Modbus PLC Registers Address:
 
@@ -135,7 +135,7 @@ class Controller(metaclass=SingletonMeta):
 
                     Example:
                     controller_info = {
-                                'Delta PLC': {'Controller ID': 'ghg256gjd88f',
+                                'Delta PLC': {'Controller ID': '5d86a0b8-d789-4637-9c61-86617afe6808',
                                               'Controller Type': 'PLC Delta',
                                               'Controller Protocol': 'Ethernet', 
                                               'Controller IP': '192.168.10.5', 
@@ -146,7 +146,7 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Count Pin OUT': 4,
                                               'Controller Pins:[1,2]},
 
-                                 'bluepill': {'Controller ID': 'gtht6577gjd88f',
+                                 'bluepill': {'Controller ID': 'd0616f63-b321-48d7-bb5a-6744d865f44c',
                                               'Controller Type': 'ARM Micro-controller',
                                               'Controller Protocol': 'Serial', 
                                               'Controller IP': None, 
@@ -157,7 +157,7 @@ class Controller(metaclass=SingletonMeta):
                                               'Controller Count Pin OUT': 10,
                                               'Controller Pins:[10,20,30]},
 
-                                'ماژول رله': {'Controller ID': 'pjho090909jkkd',
+                                'ماژول رله': {'Controller ID': 'aef3c624-37ba-456f-98b3-3d3e9e2a0ac4',
                                               'Controller Type': 'Relay Module',
                                               'Controller Protocol': 'Ethernet', 
                                               'Controller IP': '192.168.1.16', 
@@ -279,99 +279,90 @@ class Controller(metaclass=SingletonMeta):
             print(log_message)
 
     def controller_clients_heartbeat(self):
-        time.sleep(5)
-        threads = []
-        print(f"**************************** {self.clients_list}")
+        time.sleep(float(os.getenv('CONTROLLER_HEARTBEAT_DELAY')))
+        _, _, _, controller_name = self.controller_clients_creator(self.controller_info)
+        threads = {}
         for controller_id, client in self.clients_list.items():
-            print(f".........................................{controller_id=} , {client=}, {self.clients_protocol[controller_id]=} , {self.clients_unit[controller_id]=}")
-            # thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ))
-            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], ), daemon=True) #! main
-            threads.append(thread)
-            # thread.start() #! commented
-
-        for thr in threads:
-            print(f"Starting thread: {thr}")
+            thread = threading.Thread(target=self.controller_check_connection, args=(controller_id, self.clients_protocol[controller_id], client, self.clients_unit[controller_id], controller_name, ), daemon=True)
+            threads[controller_id] = thread
+        for id, thr in threads.items():
             thr.start()
-            # thr.join()
-
-        # for thr in threads:
-        #     thr.join()
+            log_message = f"🇹 Controller [{controller_name[id]}] heartbeat thread run..."
+            self.controller_logger.logger.debug(log_message)
         
-
-    def controller_check_connection(self, controller_id, controller_protocol, client, controller_unit):
-        print(f"Thread running for {controller_id}")
+    def controller_check_connection(self, controller_id, controller_protocol, client, controller_unit, controller_name):
         global connection_queue
-        # with self.lock: #! commented
         try:
-            print(f"xxxxxxxxxxxx {controller_id}")
-            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Controller Initialized'}
-            print(f"yyyyyyyyyyyy {controller_id}")
+            controller_connection_state = {'controller_id': controller_id, 'connection': None, 'description':f'Controller [{controller_name[controller_id]}] Heartbeat Initialized'}
             connection_queue.put(controller_connection_state)
-            print(f"zzzzzzzzzzzz {controller_id}")
-            # rabbitmq_publisher(controller_connection_state)
+            log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{None}]: Controller Heartbeat Initialized"
+            self.controller_logger.logger.warning(log_message)
         except Exception as e:
-            print(f"----------Exception for {controller_id}: {e}")
-            print("1*****************************")
+            log_message = f"🔌 Exception in controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"
+            self.controller_logger.logger.error(log_message)
+
         previous_state = None
         while True:
             try:
-                if self.controller_client_type_selector(controller_protocol, client):                        
-                    result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
-                    # print(f"----------{result=}")
-                    if result == None and self.controller_client_type_selector(controller_protocol, client):
-                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 1")
-                        time.sleep(1)
+                if controller_protocol == 'Serial':
+                    if self.controller_client_type_selector(controller_protocol, client):                        
+                        result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
+                        if result == None and self.controller_client_type_selector(controller_protocol, client):
+                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 1") #! comment it
+                            current_state = False
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':f'Controller [{controller_name[controller_id]}] Power is OFF or Connection between USB/RS485 and Controller is Broken'}
+                                connection_queue.put(controller_connection_state)
+                                previous_state = current_state
+                                log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{False}]: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken"
+                                self.controller_logger.logger.error(log_message)
+                                # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken") #! comment it
+                        elif result == True or result == False:
+                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 3") #! comment it
+                            current_state = True
+                            if current_state != previous_state:
+                                controller_connection_state = {'controller_id': controller_id, 'connection': True, 'description':f"Controller [{controller_name[controller_id]}] Communication is OK"}
+                                connection_queue.put(controller_connection_state)
+                                previous_state = current_state
+                                log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{True}]: Controller Communication is OK"
+                                self.controller_logger.logger.info(log_message)                                
+                                # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK") #! comment it
+                    else:
+                        # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 5") #! comment it
                         current_state = False
                         if current_state != previous_state:
-                            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':'Controller Power is OFF or Connection between USB/RS485 and Controller is Broken'}
+                            controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':f"USB/RS485 of Controller [{controller_name[controller_id]}] is Not Connected"}
                             connection_queue.put(controller_connection_state)
-                            # rabbitmq_publisher(controller_connection_state)
                             previous_state = current_state
-                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken")
-                    elif result == True or result == False:
-                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 3")
-                        current_state = True
-                        if current_state != previous_state:
-                            controller_connection_state = {'controller_id': controller_id, 'connection': True, 'description':"Controller Communication is OK"}
-                            connection_queue.put(controller_connection_state)
-                            # rabbitmq_publisher(controller_connection_state)
-                            previous_state = current_state
-                            print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK")
-                else:
-                    print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 5")
-                    current_state = False
-                    if current_state != previous_state:
-                        controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':"USB/RS485 is Not Connected"}
-                        connection_queue.put(controller_connection_state)
-                        # rabbitmq_publisher(controller_connection_state)
-                        previous_state = current_state
-                        print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected")
+                            log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{False}]: USB/RS485 of Controller is Not Connected"
+                            self.controller_logger.logger.error(log_message)                            
+                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected") #! comment it
             except Exception as e:
-                print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}")
-                print("2*****************************")
+                # print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}") #! comment it
                 current_state = False
                 if current_state != previous_state:
-                    controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description': f"Exception: {e}"}
+                    controller_connection_state = {'controller_id': controller_id, 'connection': None, 'description': f"Exception in controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"}
                     connection_queue.put(controller_connection_state)
-                    # rabbitmq_publisher(controller_connection_state)
                     previous_state = current_state
-                    print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 8")
-                # rabbitmq_publisher(controller_connection_state)
-
-            time.sleep(1)
+                    log_message = f"🔌 Exception in while() for controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"
+                    self.controller_logger.logger.error(log_message)                        
+                    # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 8") #! comment it
+            time.sleep(float(os.getenv('CONTROLLER_CONNECTION_DELAY')))
     
     def controller_clients_definition(self, controller_info):
         with self.lock:
-            self.clients_list, self.clients_protocol, self.clients_unit = self.controller_clients_creator(controller_info)
+            self.clients_list, self.clients_protocol, self.clients_unit, self.clients_name = self.controller_clients_creator(controller_info)
             self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
-        log_message = "Clients definition thread run"
+        log_message = "🇹 Clients definition thread run..."
         self.controller_logger.logger.debug(log_message)
 
-    def controller_clients_creator(self, controller_info: dict):
+    def controller_clients_creator(self, controller_info: dict):    
         clients_list = {}
         clients_protocol = {}
         clients_unit = {}
+        clients_name = {}
         for controller_name, controller in controller_info.items():
+            clients_name[controller['Controller ID']] = controller_name
             if controller['Controller Type'] == 'PLC Delta':
                 if controller['Controller Protocol'] == 'Ethernet':
                     client = ModbusClient(host=controller['Controller IP'],
@@ -406,7 +397,7 @@ class Controller(metaclass=SingletonMeta):
                 print(log_message)
 
 
-        return clients_list, clients_protocol, clients_unit
+        return clients_list, clients_protocol, clients_unit, clients_name
 
     def controller_client_type_selector(self, client_protocol: str, client):
         if client_protocol == 'Ethernet':
@@ -536,7 +527,7 @@ class Controller(metaclass=SingletonMeta):
             return result.registers[0]
 
     def controller_state_monitor(self, scenarios_info: dict):
-            log_message = "state monitor thread run"
+            log_message = "🇹 State monitor thread run"
             self.controller_logger.logger.debug(log_message)
             scenarios_info_temp = scenarios_info
             for pin_info_list in scenarios_info_temp.values():
