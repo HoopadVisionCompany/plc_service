@@ -50,7 +50,7 @@ routing_key = os.getenv("RABBITMQ_QUEUE_NAME")
 
 
 def rabbitmq_publisher(value: Dict[Any, Any]) -> None:
-    message_json = json.dumps(value)
+    message_json = json.dumps(value, ensure_ascii=False)
     channel.basic_publish(exchange='', routing_key=routing_key, body=message_json)
     print(f'message sends from publisher face on queue {routing_key}')
 
