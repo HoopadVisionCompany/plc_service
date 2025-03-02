@@ -1,7 +1,7 @@
 import serial
 import time
 
-port_name = '/dev/ttyUSB0'
+port_name = '/dev/ttyUSB2'
 
 ser = serial.Serial(
     port=port_name,
@@ -33,7 +33,7 @@ disable_sequences = [
 
 # Try each disable sequence
 for seq in disable_sequences:
-    for i in range(1000):
+    for i in range(100):
         print(f"Sending disable sequence: {seq}")
         ser.write(seq)
         time.sleep(0.1)  # Adjust sleep time as necessary for your use case
