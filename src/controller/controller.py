@@ -201,7 +201,7 @@ class Controller(metaclass=SingletonMeta):
                                             "button_dual_set": None,
                                             "button_single": False
                                             }],
-                          'Auto Gate': [{
+                                        'Auto Gate': [{
                                             "_id": "d0616f63-b321-48d7-bb5a-6744d865f44c",
                                             "type": "in",
                                             "controller_id": "5d86a0b8-d789-4637-9c61-86617afe6808",
@@ -509,11 +509,15 @@ class Controller(metaclass=SingletonMeta):
             return result.registers[0]
 
     def controller_state_monitor(self, scenarios_info: dict):
+            time.sleep(float(os.getenv('CONTROLLER_STATE_MONITOR_DELAY')))
             log_message = "🇹 State monitor thread run"
             self.controller_logger.logger.debug(log_message)
             scenarios_info_temp = scenarios_info
+            print(f"********************scenarios_info_temp:{scenarios_info_temp}") #!
             for pin_info_list in scenarios_info_temp.values():
+                print(f"********************pin_info_list:{pin_info_list}") #!
                 for pin_info in pin_info_list:
+                    print(f"********************pin_info:{pin_info}") #!  
                     register = self.controller_register_creator(pin=pin_info['number'], create_from_controller_event=False)
                     state = self.controller_register_read_value(client=self.clients_list[pin_info['controller_id']], register=register, client_unit=pin_info['controller_unit'])
                     pin_info['previous_state'] = state
@@ -523,23 +527,24 @@ class Controller(metaclass=SingletonMeta):
                 try:
                     with self.lock:
                         for scenario, pin_info_list in scenarios_info_temp.items():
+                            # print(f"********************scenarios_info_temp222:{scenarios_info_temp}") #!
                             for pin_info in pin_info_list:
                                 current_state = self.controller_register_read_value(client=pin_info['client'], register=pin_info['register'], client_unit=pin_info['controller_unit'])
                                 if current_state != pin_info['previous_state']:
-                                    # if scenario in ['Auto Alarm', 'Auto Caller']: ##! Temporary Commented
-                                    if True: #! Temporary
-                                        log_message = f"Button State of pin [{pin_info['number']}] changed"
+                                    if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay']: ##! Temporary Commented
+                                    # if True: #! Temporary
+                                        log_message = f"Button State of pin [{pin_info['number']}] of scenario [{scenario}] changed"
                                         self.controller_logger.logger.debug(log_message) 
                                         pin_info['button_single'] = current_state
                                         pin_info['previous_state'] = current_state
                                         # time.sleep(1) #! temp
-                                    else:
-                                        pass ##! Other Scenarios Must Be Implemented
-                                    current_pin_buttons_state = {'button_single':pin_info['button_single'],
-                                                                'button_dual_set':pin_info['button_dual_set'],
-                                                                'button_dual_reset':pin_info['button_dual_reset']}
-                                    self.controller_button_to_db(button_states=current_pin_buttons_state, pin_id=pin_info['_id'], pin=pin_info['number'])
-                                    print(f"Scenario is {scenario} , the pins are {pin_info}, and the button states are {current_pin_buttons_state}")
+                                    # else:
+                                    #     pass ##! Other Scenarios Must Be Implemented
+                                        current_pin_buttons_state = {'button_single':pin_info['button_single'],
+                                                                    'button_dual_set':pin_info['button_dual_set'],
+                                                                    'button_dual_reset':pin_info['button_dual_reset']}
+                                        self.controller_button_to_db(button_states=current_pin_buttons_state, pin_id=pin_info['_id'], pin=pin_info['number'])
+                                        print(f"Scenario is {scenario} , the pins are {pin_info}, and the button states are {current_pin_buttons_state}")
                 except Exception as e:
                     log_message = f"Exception in controller_state_monitor(): {e}"
                     self.controller_logger.logger.error(log_message)
@@ -565,7 +570,7 @@ class Controller(metaclass=SingletonMeta):
         button_dual_set = None
         button_dual_reset = None
 
-        if scenario in ['Auto Alarm', 'Auto Caller']:
+        if scenario in ['Auto Alarm', 'Auto Caller']: #! Auto Relay must be added
             button_single = XNOR(write_status, read_status) 
         elif scenario in ['Manual Alarm ON', 'Relay ON']:
             button_single = write_status and read_status
