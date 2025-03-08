@@ -39,3 +39,21 @@ for seq in disable_sequences:
         time.sleep(0.1)  # Adjust sleep time as necessary for your use case
 
 ser.close()
+
+
+# import glob
+
+# # List USB serial devices
+# usb_ports = glob.glob('/dev/ttyUSB*')
+
+# print("USB Serial Ports:", usb_ports)
+
+# import serial.tools.list_ports
+
+# # Get a list of available serial ports
+# ports = serial.tools.list_ports.comports()
+
+# # Extract device names
+# usb_ports = [port.device for port in ports if "USB" in port.description]
+
+# print("USB Serial Ports:", usb_ports)
