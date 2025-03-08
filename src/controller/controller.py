@@ -349,7 +349,7 @@ class Controller(metaclass=SingletonMeta):
                     # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 8") #! comment it
             time.sleep(float(os.getenv('CONTROLLER_CONNECTION_DELAY')))
     
-    def controller_clients_definition(self, controller_info):
+    def controller_clients_definition(self, controller_info: dict):
         with self.lock:
             self.clients_list, self.clients_protocol, self.clients_unit, self.clients_name = self.controller_clients_creator(controller_info)
             self.controller_clients_initial_connector(self.clients_list, self.clients_protocol, controller_info)
@@ -383,8 +383,7 @@ class Controller(metaclass=SingletonMeta):
                     clients_list[controller['Controller ID']] = client
                     clients_protocol[controller['Controller ID']] = 'Serial'
                     clients_unit[controller['Controller ID']] = controller['Controller Unit']
-
-                log_message = f"✅ Client for [{controller_name}] controller created"
+                log_message = f"Client for [{controller_name}] controller created"
                 self.controller_logger.logger.info(log_message)
                 log_message = f"Client information of [{controller_name}]: [{client}]"
                 self.controller_logger.logger.debug(log_message)
@@ -392,10 +391,9 @@ class Controller(metaclass=SingletonMeta):
                 clients_list[controller['Controller ID']] = None
                 clients_protocol[controller['Controller ID']] = None
                 clients_unit[controller['Controller ID']] = None
-                log_message = f"❌ Client for [{controller_name}] controller is not defined!"
+                clients_name[controller['Controller ID']] = None
+                log_message = f"Client for [{controller_name}] controller is not defined!"
                 self.controller_logger.logger.error(log_message)
-                print(log_message)
-
 
         return clients_list, clients_protocol, clients_unit, clients_name
 
@@ -417,38 +415,30 @@ class Controller(metaclass=SingletonMeta):
             controller_name = controller_names[name_counter]
             name_counter += 1
             retries = 0
-            # t1 = datetime.now()
             while retries < max_retries:
                 try:
                     if self.controller_client_type_selector(clients_protocol[controller_id], client):
                         log_message = f"✅ Client for [{controller_name}] controller connected"
                         self.controller_logger.logger.info(log_message)
-                        print(log_message)
                         connected = True
                         break
                     else:
                         log_message = f"🔄 Retrying to connect to [{controller_name}] controller... ({retries + 1}/{max_retries})"
                         self.controller_logger.logger.warning(log_message)
-                        print(log_message)
                         retries += 1
                         time.sleep(retry_delay)
                 except Exception as e:
                     log_message = f"🔄 Retrying to connect to [{controller_name}] controller... ({retries + 1}/{max_retries})"
                     self.controller_logger.logger.warning(log_message)
-                    print(log_message)
                     log_message = f"Exception in controller_clients_initial_connector(): {e}"
-                    self.controller_logger.logger.error(log_message)
-                    print(log_message)                    
+                    self.controller_logger.logger.error(log_message)                 
                     retries += 1
                     time.sleep(retry_delay)
             if connected is False:
                 log_message = f"❌ Client for [{controller_name}] controller NOT connected after [{max_retries}] retries."
                 self.controller_logger.logger.error(log_message)
-                print(log_message)    
-            # t2 = datetime.now()
-            # print(f"..........................elapsed time: {t2 - t1}")
 
-    def controller_info_extractor(self, controller_event: dict):
+    def controller_event_info_extractor(self, controller_event: dict):
         for controller_name, controller in self.controller_info.items():
             if controller['Controller ID'] == controller_event['Controller ID']:
                 self.controller_info_name = controller_name
@@ -472,28 +462,23 @@ class Controller(metaclass=SingletonMeta):
                 if self.controller_client_type_selector(self.controller_info_protocol, client):
                     log_message = f"✅ Client for [{self.controller_info_name}] controller connected AGAIN"
                     self.controller_logger.logger.info(log_message)
-                    print(log_message)
                     connected = True
                     break
                 else:
                     log_message = f"🔄 Retrying to connect AGAIN to [{self.controller_info_name}] controller... ({retries + 1}/{max_retries})"
                     self.controller_logger.logger.warning(log_message)
-                    print(log_message)
                     retries += 1
                     time.sleep(retry_delay)
             except Exception as e:
                 log_message = f"🔄 Retrying to connect AGAIN to [{self.controller_info_name}] controller... ({retries + 1}/{max_retries})"
                 self.controller_logger.logger.warning(log_message)
-                print(log_message)
                 log_message = f"Exception in controller_client_connector(): {e}"
-                self.controller_logger.logger.error(log_message)
-                print(log_message)   
+                self.controller_logger.logger.error(log_message) 
                 retries += 1
                 time.sleep(retry_delay)
         if connected is False:
             log_message = f"❌ Client for [{self.controller_info_name}] controller NOT connected AGAIN after [{max_retries}] retries."
-            self.controller_logger.logger.error(log_message)
-            print(log_message)  
+            self.controller_logger.logger.error(log_message) 
 
     def controller_register_creator(self, controller_event={}, pin=0, create_from_controller_event=True):
         if create_from_controller_event:
@@ -506,10 +491,9 @@ class Controller(metaclass=SingletonMeta):
                         elif self.controller_info_protocol == 'Serial':
                             registers_list.append(pin + 2048)
                 else:
-                    print(
-                        f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!")
+                    log_message = f"Register Address for Controller \033[1m[{controller['Controller Type']}]\033[0m is Not Defined!"
+                    self.controller_logger.logger.error(log_message)
                     registers_list = None
-            print(f'{registers_list=}')
             return registers_list
         else:
             return pin + 2048
@@ -519,11 +503,9 @@ class Controller(metaclass=SingletonMeta):
             # Modbus protocol, you typically subtract 400001 when using function codes 0x03 (read holding registers) and 0x06 (write single register):
             address = timer + 404097 - 400001 
             result = client.write_register(address, delay*10, client_unit) # delay coefficient (10) is only for T0 to T127 timers
-            print(f"{result=}")
             return result
         elif option == 'r':
             result = client.read_holding_registers(address, 1, client_unit)
-            print(result.registers[0])
             return result.registers[0]
 
     def controller_state_monitor(self, scenarios_info: dict):
@@ -561,8 +543,7 @@ class Controller(metaclass=SingletonMeta):
                 except Exception as e:
                     log_message = f"Exception in controller_state_monitor(): {e}"
                     self.controller_logger.logger.error(log_message)
-                    # print(log_message)
-        
+      
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
         def XOR(A, B):
@@ -636,30 +617,24 @@ class Controller(metaclass=SingletonMeta):
                         operation_completed = True
                         log_message = f"✅  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]"
                         self.controller_logger.logger.debug(log_message)
-                        print(log_message)
                         return True  # Must be modified
                     elif read_value == write_status:
                         log_message = f"🔄  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})"
                         self.controller_logger.logger.warning(log_message)
-                        print(log_message)
                         self.controller_client_connector(client)
                 else:
                     log_message = f"🔄  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})"
                     self.controller_logger.logger.warning(log_message)
-                    print(log_message)
                     self.controller_client_connector(client)
             if operation_completed is False:
                 log_message = f"❌ [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]"
                 self.controller_logger.logger.error(log_message)
-                print(log_message)
                 return False  # Must be modified
         except Exception as e:
             log_message = f"❌ [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]"
             self.controller_logger.logger.error(log_message)
-            print(log_message)
             log_message = f"Exception in controller_output_control(): {e}"
             self.controller_logger.logger.error(log_message)
-            print(log_message)
             return False  # Must be modified
 
     def controller_scenario_handler(self, controller_event: dict, client_registers, client):
@@ -704,7 +679,7 @@ class Controller(metaclass=SingletonMeta):
                 print(f"Scenario is not defined. Write its code 🙂") #! log
 
     def controller_action(self, controller_event: dict):
-        self.controller_info_extractor(controller_event)
+        self.controller_event_info_extractor(controller_event)
         client_registers = self.controller_register_creator(controller_event)
         client = self.clients_list[self.controller_info_id]
         self.controller_scenario_handler(controller_event, client_registers, client)
