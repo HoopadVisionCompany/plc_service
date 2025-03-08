@@ -192,3 +192,5 @@ pip-selfcheck.json
 
 *.sh
 *.rdb
+
+/home/hoopad/.HBOX/plc_service/src/controller/controller (with arduino and errors).py
