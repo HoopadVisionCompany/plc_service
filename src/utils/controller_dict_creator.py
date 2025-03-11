@@ -126,20 +126,24 @@ def update_controllers_info_dict(data: dict):
 
 
 def create_scenario_pin_dict():
-    tasks = task_collection.retrieve()
     result = {}
-    for task in tasks:
-        try:
-            scenario = scenario_collection.detail(task["scenario_id"])
-            controller = controller_collection.detail(task["controller_id"])
-            pins = list(pin_collection.pin_collection.find({"controller_id": task["controller_id"]}))
-            for pin in pins:
-                pin["controller_unit"] = controller["controller_unit"]
+    scenarios = scenario_collection.retrieve()
+    for scenario in scenarios:
+        tasks = list(task_collection.task_collection.find({"scenario_id": scenario["_id"]}))
+        pins = []
+        for task in tasks:
+            try:
+                controller = controller_collection.detail(task["controller_id"])
+                pins_db = (list(pin_collection.pin_collection.find(
+                    {"controller_id": task["controller_id"], "number": {"$in": task["pin_numbers"]}})))
+                for pin in pins_db:
+                    pin["controller_unit"] = controller["controller_unit"]
+                pins.extend(pins_db)
 
-            if len(pins) != 0:
-                result[scenario["name"]] = pins
-        except Exception as e:
-            pass
+            except Exception as e:
+                pass
+        if len(pins) != 0:
+            result[scenario["name"]] = pins
     return result
 
 
