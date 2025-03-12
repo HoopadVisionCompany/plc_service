@@ -513,11 +513,11 @@ class Controller(metaclass=SingletonMeta):
             log_message = "🇹 State monitor thread run"
             self.controller_logger.logger.debug(log_message)
             scenarios_info_temp = scenarios_info
-            print(f"********************scenarios_info_temp:{scenarios_info_temp}") #!
+            # print(f"********************scenarios_info_temp:{scenarios_info_temp}") #!
             for pin_info_list in scenarios_info_temp.values():
-                print(f"********************pin_info_list:{pin_info_list}") #!
+                # print(f"********************pin_info_list:{pin_info_list}") #!
                 for pin_info in pin_info_list:
-                    print(f"********************pin_info:{pin_info}") #!  
+                    # print(f"********************pin_info:{pin_info}") #!  
                     register = self.controller_register_creator(pin=pin_info['number'], create_from_controller_event=False)
                     state = self.controller_register_read_value(client=self.clients_list[pin_info['controller_id']], register=register, client_unit=pin_info['controller_unit'])
                     pin_info['previous_state'] = state
@@ -531,7 +531,7 @@ class Controller(metaclass=SingletonMeta):
                             for pin_info in pin_info_list:
                                 current_state = self.controller_register_read_value(client=pin_info['client'], register=pin_info['register'], client_unit=pin_info['controller_unit'])
                                 if current_state != pin_info['previous_state']:
-                                    if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay']: ##! Temporary Commented
+                                    if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay']:
                                     # if True: #! Temporary
                                         log_message = f"Button State of pin [{pin_info['number']}] of scenario [{scenario}] changed"
                                         self.controller_logger.logger.debug(log_message) 
@@ -551,38 +551,39 @@ class Controller(metaclass=SingletonMeta):
       
     def controller_button_state(self, scenario, write_status, read_status):
         # Function to simulate XOR Gate
-        def XOR(A, B):
-            return A ^ B
+        # def XOR(A, B):
+        #     return A ^ B
 
         # Function to simulate NOT Gate
         def NOT(A):
             return not A
 
         # Function to simulate XNOR Gate
-        def XNOR(A, B):
-            return NOT(XOR(A, B))
+        # def XNOR(A, B):
+        #     return NOT(XOR(A, B))
 
         # Function to simulate NOR Gate
         def NOR(A, B):
             return NOT(A or B)
+        
+         # Function to simulate NAND Gate
+        def NAND(A, B):
+            return NOT(A and B)
 
         button_single = None
         button_dual_set = None
         button_dual_reset = None
 
-        if scenario in ['Auto Alarm', 'Auto Caller']: #! Auto Relay must be added
-            button_single = XNOR(write_status, read_status) 
-        elif scenario in ['Manual Alarm ON', 'Relay ON']:
+        if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay', 'Manual Alarm ON', 'Relay ON']: 
             button_single = write_status and read_status
+
         elif scenario in ['Manual Alarm OFF', 'Relay OFF']:
             button_single = NOR(write_status, read_status)
-        elif scenario in ['Auto Gate']:
-            button_dual_set = write_status and read_status
-            button_dual_reset = NOT(button_dual_set)
-            ##! Think about auto close!
-        elif scenario in ['Manual Gate Open']:
-            button_dual_set = write_status and read_status
-            button_dual_reset = NOT(button_dual_set)
+
+        elif scenario in ['Auto Gate', 'Manual Gate Open']:
+            button_dual_set = NAND(write_status, read_status)
+            button_dual_reset = write_status and read_status
+
         elif scenario in ['Manual Gate Close']:
             button_dual_reset = write_status or read_status
             button_dual_set = NOT(button_dual_reset)
@@ -659,26 +660,37 @@ class Controller(metaclass=SingletonMeta):
                     self.controller_logger.logger.info(log_message)
                 else:
                     log_message = f"❌ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
-                    self.controller_logger.logger.error(log_message)
-                print(log_message)                    
+                    self.controller_logger.logger.error(log_message)              
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
 
-            elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']: #! log
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
+            elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
+                control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
                                                                 register=register, write_status=True)
-                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result)
-                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
+                if control_result_on == True:
+                    log_message = f"✅ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.info(log_message)
+                else:
+                    log_message = f"❌ Output Control Result is [{control_result_on}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.error(log_message)
 
-            elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']: #! log
-                control_result = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
+                self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
+
+            elif controller_event['Scenario'] in ['Manual Alarm OFF', 'Manual Gate Close', 'Relay OFF']:
+                control_result_off = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
                                                                 register=register, write_status=False)
-                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result)
+                if control_result_off == True:
+                    log_message = f"✅ Output Control Result is [{control_result_off}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.info(log_message)
+                else:
+                    log_message = f"❌ Output Control Result is [{control_result_off}] for [{controller_event['Scenario']}] Scenario"
+                    self.controller_logger.logger.error(log_message)
+
+                button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=False, read_status=control_result_off)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx])
-                print(f"Output Control Result is [{control_result}] for [{controller_event['Scenario']}] Scenario")
 
             else:
                 print(f"Scenario is not defined. Write its code 🙂") #! log
