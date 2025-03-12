@@ -16,7 +16,8 @@ def publish(value):
     print(f"send data {value} to redis")
 
 
-event_data_publish = {"type": "event", "data": {"task_id": "f4eab1c2-fbd4-49c5-adb1-e4c9182c316d"}}
+event_data_publish_alarm = {"type": "event", "data": {"task_id": "f4eab1c2-fbd4-49c5-adb1-e4c9182c316d"}}
+event_data_publish_gate = {"type": "event", "data": {"task_id": "f4eab1c2-fbd4-49c5-adb1-e4c9182c316g"}}
 
 action_data_publish_on = {"type": "action",
                        "data": {'type': 'in',
@@ -45,9 +46,10 @@ action_data_publish_off = {"type": "action",
                                 'timer': 2001,
                                 'pin_id': '5e572805-a061-4ac9-8e32-2d6f43bcac8c'}
                        }
-publish(event_data_publish)
-import time
+publish(event_data_publish_alarm)
+publish(event_data_publish_gate)
 
-publish(action_data_publish_on)
-time.sleep(5)
-publish(action_data_publish_off)
+# publish(action_data_publish_on)
+# import time
+# time.sleep(5)
+# publish(action_data_publish_off)
