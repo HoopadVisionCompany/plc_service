@@ -636,7 +636,7 @@ class Controller(metaclass=SingletonMeta):
 
     def controller_scenario_handler(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
-            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Caller', 'Auto Relay']:
+            if controller_event['Scenario'] in ['Auto Alarm', 'Auto Gate', 'Auto Caller', 'Auto Relay']:
                 self.controller_timer_handler(timer=controller_event['Timer List'][idx],
                                               delay=controller_event['Delay List'][idx],
                                               client=client,
@@ -655,7 +655,7 @@ class Controller(metaclass=SingletonMeta):
                 button_states = self.controller_button_state(scenario=controller_event['Scenario'], write_status=True, read_status=control_result_on)
                 self.controller_button_to_db(button_states=button_states, pin_id=controller_event['Pin ID'][idx], pin=controller_event['Pin List'][idx], scenario=controller_event['Scenario'])
 
-            elif controller_event['Scenario'] in ['Auto Gate', 'Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
+            elif controller_event['Scenario'] in ['Manual Alarm ON', 'Manual Gate Open', 'Relay ON']:
                 control_result_on = self.controller_output_control(client_unit=self.controller_info_unit, client=client,
                                                                 pin=controller_event['Pin List'][idx],
                                                                 register=register, write_status=True)
