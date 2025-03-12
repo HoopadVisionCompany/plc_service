@@ -176,6 +176,8 @@ class Controller(metaclass=SingletonMeta):
                                    ...
                                   'Scenario N': [{pin_info 1},{pin_info 2},...]}                      
 
+                        pin_info -> pin that defined in a "Task" in MongoDB
+
                 Example:
                         scenarios_info = {'Auto Alarm': [{
                                             "_id": "5e572805-a061-4ac9-8e32-2d6f43bcac8c",
@@ -276,7 +278,6 @@ class Controller(metaclass=SingletonMeta):
         except Exception as e:
             log_message = f"Exception in Controllers and Scenarios Logging: {e}"
             self.controller_logger.logger.error(log_message)
-            print(log_message)
 
     def controller_clients_heartbeat(self):
         time.sleep(float(os.getenv('CONTROLLER_HEARTBEAT_DELAY')))
@@ -300,7 +301,6 @@ class Controller(metaclass=SingletonMeta):
         except Exception as e:
             log_message = f"🔌 Exception in controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"
             self.controller_logger.logger.error(log_message)
-
         previous_state = None
         while True:
             try:
@@ -308,7 +308,6 @@ class Controller(metaclass=SingletonMeta):
                     if self.controller_client_type_selector(controller_protocol, client):                        
                         result = self.controller_register_read_value(client, self.controller_register_creator(create_from_controller_event=False), controller_unit)
                         if result == None and self.controller_client_type_selector(controller_protocol, client):
-                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 1") #! comment it
                             current_state = False
                             if current_state != previous_state:
                                 controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':f'Controller [{controller_name[controller_id]}] Power is OFF or Connection between USB/RS485 and Controller is Broken'}
@@ -316,9 +315,7 @@ class Controller(metaclass=SingletonMeta):
                                 previous_state = current_state
                                 log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{False}]: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken"
                                 self.controller_logger.logger.error(log_message)
-                                # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 2: Controller Power is OFF or Connection between USB/RS485 and Controller is Broken") #! comment it
                         elif result == True or result == False:
-                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 3") #! comment it
                             current_state = True
                             if current_state != previous_state:
                                 controller_connection_state = {'controller_id': controller_id, 'connection': True, 'description':f"Controller [{controller_name[controller_id]}] Communication is OK"}
@@ -326,9 +323,7 @@ class Controller(metaclass=SingletonMeta):
                                 previous_state = current_state
                                 log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{True}]: Controller Communication is OK"
                                 self.controller_logger.logger.info(log_message)                                
-                                # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 4: Controller Communication is OK") #! comment it
                     else:
-                        # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 5") #! comment it
                         current_state = False
                         if current_state != previous_state:
                             controller_connection_state = {'controller_id': controller_id, 'connection': False, 'description':f"USB/RS485 of Controller [{controller_name[controller_id]}] is Not Connected"}
@@ -336,9 +331,7 @@ class Controller(metaclass=SingletonMeta):
                             previous_state = current_state
                             log_message = f"🔌 Controller [{controller_name[controller_id]}] connection state is [{False}]: USB/RS485 of Controller is Not Connected"
                             self.controller_logger.logger.error(log_message)                            
-                            # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 6: USB/RS485 is Not Connected") #! comment it
             except Exception as e:
-                # print(f">>>>>>>>>>>>>>>>>>>> 7 for {controller_id}:        {e}") #! comment it
                 current_state = False
                 if current_state != previous_state:
                     controller_connection_state = {'controller_id': controller_id, 'connection': None, 'description': f"Exception in controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"}
@@ -346,7 +339,6 @@ class Controller(metaclass=SingletonMeta):
                     previous_state = current_state
                     log_message = f"🔌 Exception in while() for controller_check_connection() for controller [{controller_name[controller_id]}]: {e}"
                     self.controller_logger.logger.error(log_message)                        
-                    # print(f"{controller_id}>>>>>>>>>>>>>>>>>>>> 8") #! comment it
             time.sleep(float(os.getenv('CONTROLLER_CONNECTION_DELAY')))
     
     def controller_clients_definition(self, controller_info: dict):
@@ -357,10 +349,7 @@ class Controller(metaclass=SingletonMeta):
         self.controller_logger.logger.debug(log_message)
 
     def controller_clients_creator(self, controller_info: dict):    
-        clients_list = {}
-        clients_protocol = {}
-        clients_unit = {}
-        clients_name = {}
+        clients_list = {}; clients_protocol = {}; clients_unit = {}; clients_name = {}
         for controller_name, controller in controller_info.items():
             clients_name[controller['Controller ID']] = controller_name
             if controller['Controller Type'] == 'PLC Delta':
@@ -394,7 +383,6 @@ class Controller(metaclass=SingletonMeta):
                 clients_name[controller['Controller ID']] = None
                 log_message = f"Client for [{controller_name}] controller is not defined!"
                 self.controller_logger.logger.error(log_message)
-
         return clients_list, clients_protocol, clients_unit, clients_name
 
     def controller_client_type_selector(self, client_protocol: str, client):
@@ -512,7 +500,6 @@ class Controller(metaclass=SingletonMeta):
         button_single = None; button_dual_set = None; button_dual_reset = None
         if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay', 'Manual Alarm ON', 'Relay ON', 'Manual Alarm OFF', 'Relay OFF']:  # Single button Scenarios
             button_single = state
-
         elif scenario in ['Auto Gate', 'Manual Gate Open', 'Manual Gate Close']: # Dual button Scenarios
             if state == True: # Gate is open
                 button_dual_set = False
@@ -520,10 +507,8 @@ class Controller(metaclass=SingletonMeta):
             else:   # Gate is close
                 button_dual_set = True
                 button_dual_reset = False
-
         log_message = f"Initial button states for pin [{pin_number}] and scenario [{scenario}] are 'button_single':[{button_single}], 'button_dual_set':[{button_dual_set}], 'button_dual_reset':[{button_dual_reset}]"
         self.controller_logger.logger.debug(log_message)
-
         return {"button_single":button_single, "button_dual_set":button_dual_set, "button_dual_reset":button_dual_reset}
     
     def controller_state_monitor(self, scenarios_info: dict):
@@ -531,46 +516,42 @@ class Controller(metaclass=SingletonMeta):
             log_message = "🇹 State monitor thread run"
             self.controller_logger.logger.debug(log_message)
             scenarios_info_temp = scenarios_info
-            # print(f"********************scenarios_info_temp:{scenarios_info_temp}") #!
             for scenario, pin_info_list in scenarios_info_temp.items():
-                # print(f"********************pin_info_list:{pin_info_list}") #!
                 for pin_info in pin_info_list:
-                    # print(f"********************pin_info:{pin_info}") #!  
                     register = self.controller_register_creator(pin=pin_info['number'], create_from_controller_event=False)
                     state = self.controller_register_read_value(client=self.clients_list[pin_info['controller_id']], register=register, client_unit=pin_info['controller_unit'])
                     initial_buttons_state = self.controller_button_initializer(state, scenario, pin_info['number'])
                     self.controller_button_to_db(button_states=initial_buttons_state, pin_id=pin_info['_id'], pin=pin_info['number'], scenario=scenario)
-
                     pin_info['previous_state'] = state
                     pin_info['register'] = register
                     pin_info['client'] = self.clients_list[pin_info['controller_id']]
-                    # print(f"********************scenarios_info_temp222:{scenarios_info_temp}") #!
             while True:
                 try:
                     with self.lock:
                         for scenario, pin_info_list in scenarios_info_temp.items():
-                            # print(f"********************scenarios_info_temp222:{scenarios_info_temp}") #!
                             for pin_info in pin_info_list:
                                 current_state = self.controller_register_read_value(client=pin_info['client'], register=pin_info['register'], client_unit=pin_info['controller_unit'])
                                 if current_state != pin_info['previous_state']:
+                                    log_message = f"Button State of pin [{pin_info['number']}] of scenario [{scenario}] changed"
+                                    self.controller_logger.logger.debug(log_message)
                                     if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay', 'Manual Alarm ON', 'Relay ON', 'Manual Alarm OFF', 'Relay OFF']:  # Single button Scenarios
-                                        log_message = f"Button State of pin [{pin_info['number']}] of scenario [{scenario}] changed"
-                                        self.controller_logger.logger.debug(log_message) 
-                                        pin_info['button_single'] = current_state
-                                        # pin_info['button_dual_set'] = None
-                                        # pin_info['button_dual_reset'] = None
+                                        pin_info['button_single'] = current_state 
+                                        if current_state == None: # Communication is Broken
+                                            pin_info['button_dual_set'] = None
+                                            pin_info['button_dual_reset'] = None
                                         pin_info['previous_state'] = current_state
-                                        # time.sleep(1) #! temp
                                     elif scenario in ['Auto Gate', 'Manual Gate Open', 'Manual Gate Close']: # Dual button Scenarios
                                         if current_state == True: # Gate is open
                                             pin_info['button_dual_set'] = False
                                             pin_info['button_dual_reset'] = True
-                                        else:   # Gate is close
+                                        elif current_state == False:   # Gate is close
                                             pin_info['button_dual_set'] = True
                                             pin_info['button_dual_reset'] = False
-                                        # pin_info['button_single'] = None
+                                        else: # Communication is Broken
+                                            pin_info['button_dual_set'] = None
+                                            pin_info['button_dual_reset'] = None
+                                            pin_info['button_single'] = None
                                         pin_info['previous_state'] = current_state
-
                                     current_pin_buttons_state = {'button_single':pin_info['button_single'],
                                                                 'button_dual_set':pin_info['button_dual_set'],
                                                                 'button_dual_reset':pin_info['button_dual_reset']}
@@ -580,52 +561,32 @@ class Controller(metaclass=SingletonMeta):
                     self.controller_logger.logger.error(log_message)
       
     def controller_button_state(self, scenario, write_status, read_status):
-        # Function to simulate XOR Gate
-        # def XOR(A, B):
-        #     return A ^ B
-
         # Function to simulate NOT Gate
         def NOT(A):
             return not A
-
-        # Function to simulate XNOR Gate
-        # def XNOR(A, B):
-        #     return NOT(XOR(A, B))
-
         # Function to simulate NOR Gate
         def NOR(A, B):
             return NOT(A or B)
-        
          # Function to simulate NAND Gate
         def NAND(A, B):
             return NOT(A and B)
-
-        button_single = None
-        button_dual_set = None
-        button_dual_reset = None
-
+        button_single = None; button_dual_set = None; button_dual_reset = None
         if scenario in ['Auto Alarm', 'Auto Caller', 'Auto Relay', 'Manual Alarm ON', 'Relay ON']: 
             button_single = write_status and read_status
-
         elif scenario in ['Manual Alarm OFF', 'Relay OFF']:
             button_single = NOR(write_status, read_status)
-
         elif scenario in ['Auto Gate', 'Manual Gate Open']:
             button_dual_set = NAND(write_status, read_status)
             button_dual_reset = write_status and read_status
-
         elif scenario in ['Manual Gate Close']:
             button_dual_reset = write_status or read_status
             button_dual_set = NOT(button_dual_reset)
-
         return {"button_single":button_single, "button_dual_set":button_dual_set, "button_dual_reset":button_dual_reset}
 
     def controller_button_to_db(self, button_states, pin_id, pin, scenario):
         result = pin_collection.update_badge(button_states, pin_id)
         log_message = f"🖲️ Button States of pin [{pin}] in scenario [{scenario}] is: [{button_states}]"
         self.controller_logger.logger.info(log_message)
-        # print(log_message)   
-        # print(f"update_badge result is: [{result}]")
 
     def controller_register_read_value(self, client, register: int, client_unit: int):
         try:
@@ -649,11 +610,11 @@ class Controller(metaclass=SingletonMeta):
                 if write_coil:
                     time.sleep(delay)  # Give some time for the PLC to process the command
                     read_value = self.controller_register_read_value(client=client, register=register, client_unit=client_unit)
-                    if read_value == write_status:  # Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
+                    if read_value == write_status:  #! Must be checked for Ethernet: client.read_coils(address=register, count=1, slave=client_unit).bits[0]
                         operation_completed = True
                         log_message = f"✅  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> Set [{write_status}]"
                         self.controller_logger.logger.debug(log_message)
-                        return True  # Must be modified
+                        return True
                     elif read_value == write_status:
                         log_message = f"🔄  [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}] -> Retrying to Set...([read_coil] Attempt {attempt + 1}/{retries})"
                         self.controller_logger.logger.warning(log_message)
@@ -665,13 +626,13 @@ class Controller(metaclass=SingletonMeta):
             if operation_completed is False:
                 log_message = f"❌ [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]"
                 self.controller_logger.logger.error(log_message)
-                return False  # Must be modified
+                return False
         except Exception as e:
             log_message = f"❌ [{self.controller_info_name}] Controller -> Output Pin [{pin}] -> Register [{register}] -> NOT Set [{write_status}]"
             self.controller_logger.logger.error(log_message)
             log_message = f"Exception in controller_output_control(): {e}"
             self.controller_logger.logger.error(log_message)
-            return False  # Must be modified
+            return False
 
     def controller_scenario_handler(self, controller_event: dict, client_registers, client):
         for idx, register in enumerate(client_registers):
@@ -736,7 +697,6 @@ class Controller(metaclass=SingletonMeta):
         controller_name = data["name"]
         del data["name"]
         self.controller_info[controller_name] = data
-        print("i guess i updated the controller info", self.controller_info)
 
 
 if __name__ == '__main__':

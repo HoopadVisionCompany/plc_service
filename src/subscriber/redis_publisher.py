@@ -49,7 +49,7 @@ action_data_publish_off = {"type": "action",
 publish(event_data_publish_alarm)
 publish(event_data_publish_gate)
 
-# publish(action_data_publish_on)
-# import time
-# time.sleep(5)
-# publish(action_data_publish_off)
+publish(action_data_publish_on)
+import time
+time.sleep(5)
+publish(action_data_publish_off)
