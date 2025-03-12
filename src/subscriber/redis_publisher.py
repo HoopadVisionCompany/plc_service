@@ -45,9 +45,9 @@ action_data_publish_off = {"type": "action",
                                 'timer': 2001,
                                 'pin_id': '5e572805-a061-4ac9-8e32-2d6f43bcac8c'}
                        }
-# publish(event_data_publish)
-# import time
+publish(event_data_publish)
+import time
 
 publish(action_data_publish_on)
-# # time.sleep(5)
-# publish(action_data_publish_off)
+time.sleep(5)
+publish(action_data_publish_off)
